@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.d.ts
+*.d.ts.map
+*.js.map
+.env
+.env.*
+!.env.example
+.DS_Store
