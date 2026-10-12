@@ -1,0 +1,15 @@
+{
+  "source": "https://github.com/MagicalAstrogy/MagVarUpdate",
+  "snapshot": "User-provided MagVarUpdate-beta, 2026-10-07; includes local modifications",
+  "sha256": {
+    "src/function/update_variables.ts": "99e6d44b949cb62d71114ae1c70845de2e1410d85da99215f6593e97e290b2c1",
+    "src/function/schema.ts": "e4b17f6f3f682fdc0e6f996706fbe39eb75875471215dd1ea48e56f422d1ae84",
+    "src/variable_def.ts": "8ba03ce3d02a2b21ff5af214f01823bbec88e6f2cc33cf831c34a53ecbf3b21e",
+    "util/common.ts": "c9ef1ee81e1499e99b7943cba06e31f2f944e9bebbbd74dda8645b900cae7973"
+  },
+  "omitted": [
+    "ST message persistence",
+    "UI notifications",
+    "author event callbacks"
+  ]
+}

@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
+import { markEjsResources } from './compatibility.js'
 import type { PromptResourceArtifact, PromptResourceNode } from '@loom-studio/application-runtime'
 import type { PresetConversionResult, SillyTavernPresetData, SillyTavernPresetPrompt } from '../types.js'
+import { convertSillyTavernRegexScripts, diagnoseSillyTavernRegexScripts } from './regex.js'
 
 export function convertSillyTavernPreset(
   source: Uint8Array | string | SillyTavernPresetData,
@@ -119,33 +121,33 @@ export function convertSillyTavernPreset(
     const isMarker = Boolean(entry.prompt.marker)
     const content = entry.prompt.content?.trim() || ''
 
-    // 1. ST 前置世界书 Marker -> 映射为 @setting.stable 虚拟锚点
+    // 1. ST 前置世界书 Marker -> 映射为 @lore.stable 虚拟锚点
     if (identifier === 'worldInfoBefore' || name === 'World Info (before)') {
       anchorState.hasStableAnchor = true
       return {
         id: `preset-virtual-setting-stable-${randomUUID().slice(0, 8)}`,
-        label: '@setting.stable',
+        label: '@lore.stable',
         meta: 'preset.virtual',
         category: 'preset',
         kind: 'virtual',
         capabilities: {
-          targetAnchorId: '@setting.stable',
+          targetAnchorId: '@lore.stable',
           localDepth,
         },
       }
     }
 
-    // 2. ST 后置世界书 Marker -> 映射为 @setting.lower 虚拟锚点
+    // 2. ST 后置世界书 Marker -> 映射为 @lore.lower 虚拟锚点
     if (identifier === 'worldInfoAfter' || name === 'World Info (after)') {
       anchorState.hasLowerAnchor = true
       return {
         id: `preset-virtual-setting-lower-${randomUUID().slice(0, 8)}`,
-        label: '@setting.lower',
+        label: '@lore.lower',
         meta: 'preset.virtual',
         category: 'preset',
         kind: 'virtual',
         capabilities: {
-          targetAnchorId: '@setting.lower',
+          targetAnchorId: '@lore.lower',
           localDepth,
         },
       }
@@ -168,19 +170,19 @@ export function convertSillyTavernPreset(
       }
     }
 
-    // 4. ST 角色设定类 Marker 占位符（charDescription / scenario 等）：若此前未出现过 @setting.stable，充当首选定位点
+    // 4. ST 角色Lore Marker 占位符（charDescription / scenario 等）：若此前未出现过 @lore.stable，充当首选定位点
     if (['charDescription', 'charPersonality', 'scenario', 'personaDescription'].includes(identifier)) {
       if (!content) {
         if (!anchorState.hasStableAnchor) {
           anchorState.hasStableAnchor = true
           return {
             id: `preset-virtual-setting-stable-${randomUUID().slice(0, 8)}`,
-            label: '@setting.stable',
+            label: '@lore.stable',
             meta: 'preset.virtual',
             category: 'preset',
             kind: 'virtual',
             capabilities: {
-              targetAnchorId: '@setting.stable',
+              targetAnchorId: '@lore.stable',
               localDepth,
             },
           }
@@ -281,15 +283,15 @@ export function convertSillyTavernPreset(
     },
   ]
 
-  // 若在条目中未曾原位匹配到 @setting.stable，则作为保底追加
+  // 若在条目中未曾原位匹配到 @lore.stable，则作为保底追加
   if (!anchorState.hasStableAnchor) {
     baseSystemVirtualNodes.splice(1, 0, {
       id: `preset-virtual-setting-stable-${randomUUID().slice(0, 8)}`,
-      label: '@setting.stable',
+      label: '@lore.stable',
       meta: 'preset.virtual',
       category: 'preset',
       kind: 'virtual',
-      capabilities: { targetAnchorId: '@setting.stable' },
+      capabilities: { targetAnchorId: '@lore.stable' },
     })
     anchorState.hasStableAnchor = true
   }
@@ -358,11 +360,11 @@ export function convertSillyTavernPreset(
   if (!anchorState.hasLowerAnchor) {
     basePostVirtualNodes.push({
       id: `preset-virtual-setting-lower-${randomUUID().slice(0, 8)}`,
-      label: '@setting.lower',
+      label: '@lore.lower',
       meta: 'preset.virtual',
       category: 'preset',
       kind: 'virtual',
-      capabilities: { targetAnchorId: '@setting.lower' },
+      capabilities: { targetAnchorId: '@lore.lower' },
     })
   }
   basePostVirtualNodes.push({
@@ -459,7 +461,18 @@ export function convertSillyTavernPreset(
       enabled: true,
       children: messageBlocks,
     },
+    textTransformRules: convertSillyTavernRegexScripts(
+      preset.extensions?.regex_scripts
+      ?? preset.extensions?.custom_regex_rules
+      ?? (preset as { regex_scripts?: unknown }).regex_scripts as never
+      ?? (preset as { custom_regex_rules?: unknown }).custom_regex_rules as never,
+    ),
   }
 
-  return { artifact }
+  const regexValue = preset.extensions?.regex_scripts
+    ?? preset.extensions?.custom_regex_rules
+    ?? (preset as { regex_scripts?: unknown }).regex_scripts as never
+    ?? (preset as { custom_regex_rules?: unknown }).custom_regex_rules as never
+  markEjsResources(artifact.rootNode)
+  return { artifact, diagnostics: diagnoseSillyTavernRegexScripts(regexValue) }
 }

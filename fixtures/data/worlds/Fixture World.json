@@ -1,0 +1,11 @@
+{
+  "name": "Fixture World",
+  "entries": {
+    "1": {
+      "uid": 1,
+      "keys": ["fixture"],
+      "content": "Fixture world entry.",
+      "enabled": true
+    }
+  }
+}

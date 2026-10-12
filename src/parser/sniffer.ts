@@ -1,6 +1,7 @@
 import type { JsonObject } from '@loom-studio/shared'
 import type { SillyTavernCard, SillyTavernLorebookData, SillyTavernPresetData, SniffResult } from '../types.js'
 import { extractStCardFromPng, isPngFile } from './png-reader.js'
+import { convertSillyTavernChat } from './chat.js'
 
 export function sniffData(source: Uint8Array | string | unknown): SniffResult {
   if (source instanceof Uint8Array || Buffer.isBuffer(source)) {
@@ -28,6 +29,10 @@ export function sniffData(source: Uint8Array | string | unknown): SniffResult {
 
     try {
       const text = Buffer.from(source).toString('utf8').trim()
+      if (looksLikeChat(text)) {
+        const chat = convertSillyTavernChat(text)
+        return { detected: true, format: 'st.chat.jsonl', summary: `SillyTavern Chat: ${chat.title} (${chat.messages.length} messages)` }
+      }
       if (text.startsWith('{') && text.endsWith('}')) {
         return sniffJsonObject(JSON.parse(text) as unknown)
       }
@@ -38,6 +43,14 @@ export function sniffData(source: Uint8Array | string | unknown): SniffResult {
 
   if (typeof source === 'string') {
     const trimmed = source.trim()
+    if (looksLikeChat(trimmed)) {
+      try {
+        const chat = convertSillyTavernChat(trimmed)
+        return { detected: true, format: 'st.chat.jsonl', summary: `SillyTavern Chat: ${chat.title} (${chat.messages.length} messages)` }
+      } catch {
+        return { detected: false, format: 'unknown' }
+      }
+    }
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
       try {
         return sniffJsonObject(JSON.parse(trimmed) as unknown)
@@ -52,6 +65,11 @@ export function sniffData(source: Uint8Array | string | unknown): SniffResult {
   }
 
   return { detected: false, format: 'unknown' }
+}
+
+function looksLikeChat(text: string): boolean {
+  const lines = text.split(/\r?\n/).filter(line => line.trim())
+  return lines.length > 1 && lines.some(line => line.includes('"chat_metadata"') || line.includes('"mes"'))
 }
 
 function sniffJsonObject(value: unknown): SniffResult {

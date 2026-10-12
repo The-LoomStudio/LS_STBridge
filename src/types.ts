@@ -1,5 +1,6 @@
 import type { JsonObject, JsonValue } from '@loom-studio/shared'
 import type { CardBundleArtifact, PromptResourceArtifact } from '@loom-studio/application-runtime'
+import type { SillyTavernRegexScript } from './normalizer/regex.js'
 
 export type SillyTavernCardV2Data = {
   name?: string
@@ -17,6 +18,8 @@ export type SillyTavernCardV2Data = {
   creator?: string
   character_version?: string
   extensions?: Record<string, JsonValue>
+  custom_regex_rules?: SillyTavernRegexScript[]
+  regex_scripts?: SillyTavernRegexScript[]
 }
 
 export type SillyTavernCardV2 = SillyTavernCardV2Data & {
@@ -67,6 +70,8 @@ export type SillyTavernLorebookEntry = {
   case_sensitive?: boolean | null
   keysearch_case?: boolean | null
   extensions?: Record<string, JsonValue>
+  custom_regex_rules?: SillyTavernRegexScript[]
+  regex_scripts?: SillyTavernRegexScript[]
 }
 
 export type SillyTavernLorebookData = {
@@ -113,17 +118,6 @@ export type SillyTavernPresetData = {
   top_k?: number
   max_tokens?: number
   extensions?: Record<string, JsonValue>
-  use_tavern_regex?: boolean
-  custom_regex_rules?: Array<{
-    id?: string
-    name?: string
-    findRegex?: string
-    replaceString?: string
-    disabled?: boolean
-    enabled?: boolean
-    placement?: number[] | string[]
-    [key: string]: unknown
-  }>
   [key: string]: unknown
 }
 
@@ -132,6 +126,7 @@ export type SniffFormat =
   | 'st.card.json'
   | 'st.lorebook.json'
   | 'st.preset.json'
+  | 'st.chat.jsonl'
   | 'unknown'
 
 export type SniffResult = {
@@ -145,6 +140,7 @@ export type CardConversionResult = {
   artifact: CardBundleArtifact
   avatarBytes?: Uint8Array
   sourceFormat: 'st.card.v2' | 'st.card.v3'
+  diagnostics?: string[]
 }
 
 export type LorebookConversionResult = {
@@ -153,4 +149,5 @@ export type LorebookConversionResult = {
 
 export type PresetConversionResult = {
   artifact: PromptResourceArtifact
+  diagnostics?: string[]
 }

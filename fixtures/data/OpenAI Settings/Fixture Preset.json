@@ -1,0 +1,21 @@
+{
+  "name": "Fixture Preset",
+  "prompts": [
+    {
+      "identifier": "main",
+      "name": "Main",
+      "role": "system",
+      "content": "You are a fixture assistant."
+    }
+  ],
+  "extensions": {
+    "regex_scripts": [
+      {
+        "scriptName": "Fixture thought",
+        "findRegex": "/<think>([\\s\\S]*?)<\\/think>/g",
+        "replaceString": "",
+        "placement": [2]
+      }
+    ]
+  }
+}

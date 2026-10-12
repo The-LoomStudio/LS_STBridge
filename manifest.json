@@ -15,13 +15,52 @@
       "id": "server",
       "runtime": "server",
       "entry": "./dist/index.js",
+      "capabilities": {
+        "prompt.process": true,
+        "state.contribute": true,
+        "state.read": true,
+        "state.write": true,
+        "state.processContent": true
+      },
       "contributes": {
         "rpc": [
           { "name": "sillytavern.importer.convertPromptResource" },
           { "name": "sillytavern.importer.sniff" },
           { "name": "sillytavern.importer.convertCard" },
           { "name": "sillytavern.importer.convertLorebook" },
-          { "name": "sillytavern.importer.convertPreset" }
+          { "name": "sillytavern.importer.convertPreset" },
+          { "name": "sillytavern.importer.convertChat" }
+          ,{ "name": "sillytavern.importer.migration.start" }
+          ,{ "name": "sillytavern.importer.migration.appendBatch" }
+          ,{ "name": "sillytavern.importer.migration.inspect" }
+          ,{ "name": "sillytavern.importer.migration.commit" }
+          ,{ "name": "sillytavern.importer.migration.cancel" }
+        ]
+      }
+    },
+    {
+      "id": "client",
+      "runtime": "client",
+      "entry": "./dist/client/index.js",
+      "contributes": {
+        "commands": [
+          { "id": "overall-migration", "title": "整体迁移", "icon": "refresh" }
+        ],
+        "actions": [
+          {
+            "commandId": "overall-migration",
+            "surface": "extension.workbench.actions",
+            "suggestedOrder": 10
+          }
+        ],
+        "renderers": [
+          {
+            "id": "overall-migration-modal",
+            "name": "整体迁移",
+            "surface": "shell.workspace-panel",
+            "instanceScope": "workspace",
+            "adapter": "direct"
+          }
         ]
       }
     }

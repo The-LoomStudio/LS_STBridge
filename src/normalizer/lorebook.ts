@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { PromptActivation, PromptResourceArtifact, PromptResourceNode } from '@loom-studio/application-runtime'
 import type { LorebookConversionResult, SillyTavernLorebookData, SillyTavernLorebookEntry } from '../types.js'
+import { markEjsResources } from './compatibility.js'
 
 export function extractLorebookKeys(entry: SillyTavernLorebookEntry): string[] {
   const raw = entry.key ?? entry.keys ?? []
@@ -79,9 +80,9 @@ export function convertSillyTavernLorebook(
     if (isAtDepth) {
       targetAnchorId = '@chat.session.post'
     } else if (isConstant) {
-      targetAnchorId = '@setting.stable'
+      targetAnchorId = '@lore.stable'
     } else {
-      targetAnchorId = '@setting.lower'
+      targetAnchorId = '@lore.lower'
     }
 
     const depthValue = typeof entry.extensions?.depth === 'number' ? entry.extensions.depth : 4
@@ -91,9 +92,10 @@ export function convertSillyTavernLorebook(
       id: `lorebook-node-${entryId}-${randomUUID().slice(0, 6)}`,
       label,
       kind: 'entry',
-      category: 'setting',
+      category: 'lore',
       enabled: isEnabled,
       body: entry.content,
+      extra: { stUid: entry.uid ?? entry.id ?? entryId },
       capabilities: {
         targetAnchorId,
         localDepth,
@@ -107,16 +109,17 @@ export function convertSillyTavernLorebook(
   const artifact: PromptResourceArtifact = {
     format: 'loom.promptResource',
     schemaVersion: 1,
-    resourceKind: 'setting',
+    resourceKind: 'lore',
     rootNode: {
       id: rootId,
       label: lorebookTitle,
       kind: 'module',
-      category: 'setting',
+      category: 'lore',
       enabled: true,
       children,
     },
   }
 
+  markEjsResources(artifact.rootNode)
   return { artifact }
 }

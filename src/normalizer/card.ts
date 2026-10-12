@@ -8,6 +8,9 @@ import type {
 } from '../types.js'
 import { extractPngImageBytes, extractStCardFromPng, isPngFile } from '../parser/png-reader.js'
 import { convertSillyTavernLorebook } from './lorebook.js'
+import { convertSillyTavernRegexScripts, diagnoseSillyTavernRegexScripts } from './regex.js'
+import { markEjsResources } from './compatibility.js'
+import { mvuContributionId } from '../runtime/constants.js'
 
 export function convertSillyTavernCard(
   source: Uint8Array | SillyTavernCard,
@@ -39,6 +42,7 @@ export function convertSillyTavernCard(
   const name = data.name?.trim() || 'SillyTavern Character'
   const systemPrompt = data.system_prompt?.trim() || ''
   const firstMes = data.first_mes?.trim() || ''
+  const greetings = firstMes ? [firstMes, ...(data.alternate_greetings ?? [])] : data.alternate_greetings ?? []
 
   const fullDescription = [
     data.description?.trim(),
@@ -47,7 +51,7 @@ export function convertSillyTavernCard(
   ].filter(Boolean).join('\n\n')
 
   const contextAssets: PromptResourceNode[] = []
-  // The embedded book has one authoring source: the Setting resource tree.
+  // The embedded book has one authoring source: the Lore resource tree.
   const book = data.character_book ?? (card as SillyTavernCardV2).character_book
   if (book && book.entries && (Array.isArray(book.entries) ? book.entries.length > 0 : Object.keys(book.entries).length > 0)) {
     const bookName = book.name?.trim() || `${name} 世界书`
@@ -112,6 +116,12 @@ export function convertSillyTavernCard(
   }
 
   const artifactId = `card-st-${randomUUID()}`
+  contextAssets.forEach(markEjsResources)
+  const hasMvu = greetings.some(text => /<initvar>/i.test(text))
+    || contextAssets.some(root => root.children?.some(entry => entry.label.toLowerCase().includes('[initvar]')))
+  if (hasMvu && contextAssets[0]?.category === 'lore') {
+    contextAssets[0].extra = { ...contextAssets[0].extra, stPrimaryWorldbook: true }
+  }
 
   const metadata: NonNullable<CardBundleArtifact['metadata']> = {
     importer: 'sillytavern.importer',
@@ -129,12 +139,21 @@ export function convertSillyTavernCard(
     description: fullDescription || undefined,
     card: {
       name,
+      ...(hasMvu ? { stateContributionIds: [mvuContributionId] } : {}),
       userName: undefined,
       description: fullDescription || undefined,
       preset: systemPrompt ? { system: systemPrompt } : undefined,
-      opening: firstMes ? { entries: [{ role: 'assistant', content: firstMes }] } : undefined,
+      opening: greetings.length ? {
+        entries: [{ role: 'assistant', content: greetings[0]! }],
+        ...(greetings.length > 1 ? {
+          alternatives: greetings.slice(1).map(content => ({ entries: [{ role: 'assistant' as const, content }] })),
+        } : {}),
+      } : undefined,
     },
     contextAssets,
+    textTransformRules: convertSillyTavernRegexScripts(
+      data.extensions?.regex_scripts ?? data.extensions?.custom_regex_rules,
+    ),
     metadata,
   }
 
@@ -142,5 +161,6 @@ export function convertSillyTavernCard(
     artifact,
     avatarBytes,
     sourceFormat,
+    diagnostics: diagnoseSillyTavernRegexScripts(data.extensions?.regex_scripts ?? data.extensions?.custom_regex_rules),
   }
 }

@@ -1,0 +1,3 @@
+{"chat_metadata":{"chat_id":"fixture-chat"},"user_name":"User","character_name":"Fixture Hero"}
+{"name":"User","is_user":true,"is_system":false,"mes":"你好\n这是用户正文","send_date":"2026-09-13T00:00:00.000Z"}
+{"name":"Fixture Hero","is_user":false,"is_system":false,"mes":"你好，欢迎来到测试会话。","extra":{"reasoning":"ignored"},"send_date":"2026-09-13T00:00:01.000Z"}
