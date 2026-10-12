@@ -1,0 +1,114 @@
+import { randomUUID } from 'node:crypto';
+import { markEjsResources } from './compatibility.js';
+export function extractLorebookKeys(entry) {
+    const raw = entry.key ?? entry.keys ?? [];
+    const list = Array.isArray(raw) ? raw : (typeof raw === 'string' ? raw.split(',') : []);
+    return [...new Set(list
+            .map(k => String(k).trim())
+            .filter(k => k.length > 0 && k !== '[object Undefined]' && k !== 'undefined' && k !== 'null'))];
+}
+export function convertSillyTavernLorebook(source, defaultName) {
+    let lorebook;
+    if (source instanceof Uint8Array || Buffer.isBuffer(source)) {
+        const text = Buffer.from(source).toString('utf8');
+        lorebook = JSON.parse(text);
+    }
+    else if (typeof source === 'string') {
+        lorebook = JSON.parse(source);
+    }
+    else {
+        lorebook = source;
+    }
+    const rawEntries = (Array.isArray(lorebook.entries)
+        ? lorebook.entries
+        : Object.values(lorebook.entries ?? {}))
+        .filter((entry) => Boolean(entry && entry.content));
+    const getEntryOrder = (entry) => {
+        if (typeof entry.order === 'number')
+            return entry.order;
+        if (typeof entry.insertion_order === 'number')
+            return entry.insertion_order;
+        return 100;
+    };
+    // Sort rawEntries by natural ascending order (smaller order on top, larger order at bottom)
+    const sortedEntries = [...rawEntries].sort((a, b) => getEntryOrder(a) - getEntryOrder(b));
+    const rootId = `lorebook-root-${randomUUID().slice(0, 8)}`;
+    const lorebookTitle = lorebook.name?.trim() || defaultName?.trim() || 'SillyTavern Lorebook';
+    const children = [];
+    for (const [index, entry] of sortedEntries.entries()) {
+        const entryId = entry.uid !== undefined ? String(entry.uid) : (entry.id !== undefined ? String(entry.id) : `entry-${index + 1}`);
+        const keys = extractLorebookKeys(entry);
+        const label = entry.comment?.trim()
+            || (keys.length > 0 ? keys[0] : undefined)
+            || `Lorebook Entry ${index + 1}`;
+        const isConstant = Boolean(entry.constant ?? entry.alwaysActive);
+        const isEnabled = entry.disable !== undefined ? !entry.disable : entry.enabled !== false;
+        const isCaseSensitive = Boolean(entry.keysearch_case ?? entry.case_sensitive ?? entry.caseSensitive);
+        let activation;
+        let lifecycle;
+        if (isConstant) {
+            activation = { kind: 'always' };
+            lifecycle = 'always';
+        }
+        else if (keys.length > 0) {
+            activation = {
+                kind: 'keyword',
+                keywords: keys,
+                caseSensitive: isCaseSensitive,
+            };
+            lifecycle = 'keyword';
+        }
+        else {
+            activation = { kind: 'always' };
+            lifecycle = 'always';
+        }
+        // In SillyTavern, position 4 or 'at_depth' explicitly means @chat.session.post injection.
+        // In Character Cards, the advanced position is stored in entry.extensions.position.
+        const rawPos = entry.extensions?.position !== undefined ? entry.extensions.position : entry.position;
+        const isAtDepth = rawPos === 4 || rawPos === 'at_depth' || rawPos === 'atDepth';
+        let targetAnchorId;
+        if (isAtDepth) {
+            targetAnchorId = '@chat.session.post';
+        }
+        else if (isConstant) {
+            targetAnchorId = '@lore.stable';
+        }
+        else {
+            targetAnchorId = '@lore.lower';
+        }
+        const depthValue = typeof entry.extensions?.depth === 'number' ? entry.extensions.depth : 4;
+        const localDepth = isAtDepth ? (depthValue * 100 + (index + 1)) : (index + 1) * 10;
+        children.push({
+            id: `lorebook-node-${entryId}-${randomUUID().slice(0, 6)}`,
+            label,
+            kind: 'entry',
+            category: 'lore',
+            enabled: isEnabled,
+            body: entry.content,
+            extra: { stUid: entry.uid ?? entry.id ?? entryId },
+            capabilities: {
+                targetAnchorId,
+                localDepth,
+                roleHint: 'system',
+                activation,
+                lifecycle: { lifecycle },
+            },
+        });
+    }
+    const artifact = {
+        format: 'loom.promptResource',
+        schemaVersion: 1,
+        resourceKind: 'lore',
+        rootNode: {
+            id: rootId,
+            label: lorebookTitle,
+            kind: 'module',
+            category: 'lore',
+            enabled: true,
+            children,
+        },
+    };
+    markEjsResources(artifact.rootNode);
+    return { artifact };
+}
+//# sourceMappingURL=lorebook.js.map

@@ -53,6 +53,8 @@ QuickJS 当前在服务器线程运行，时间上限不等于零阻塞；大规
 及 EJS/QuickJS 资源；Host 隔离目录不需要扩展自己的 `node_modules`。发布时需保留完整 `dist`，
 包括 `assets`、`runtime` 和 `THIRD_PARTY_NOTICES.md`，不能只复制入口文件。
 
+Git 安装不会执行构建。修改源码后，将重新构建的完整 `dist/` 与源码一起提交到独立扩展仓库。
+
 `scripts/vendor-mvu.mjs` 从指定 MVU 源码提取内建数据规则，生成来源 SHA-256 和 MIT 许可；
 不复制 ST 存储、界面通知和作者事件宿主。`scripts/probe-upstream.mjs` 对本地上游示例卡运行内存数据库探针，
 使用固定模型回复而不请求真实模型。当前数据链与恢复测试位于主仓库 `tests/unit/st-data-compat/`、

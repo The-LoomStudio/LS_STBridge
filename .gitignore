@@ -1,5 +1,4 @@
 node_modules/
-dist/
 coverage/
 *.tsbuildinfo
 *.d.ts
@@ -9,3 +8,6 @@ coverage/
 .env.*
 !.env.example
 .DS_Store
+
+# Git installs consume prebuilt runtime artifacts.
+!/dist/**
