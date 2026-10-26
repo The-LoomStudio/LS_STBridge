@@ -60,16 +60,13 @@ export function convertSillyTavernLorebook(
     if (isConstant) {
       activation = { kind: 'always' }
       lifecycle = 'always'
-    } else if (keys.length > 0) {
+    } else {
       activation = {
         kind: 'keyword',
         keywords: keys,
         caseSensitive: isCaseSensitive,
       }
       lifecycle = 'keyword'
-    } else {
-      activation = { kind: 'always' }
-      lifecycle = 'always'
     }
 
     // In SillyTavern, position 4 or 'at_depth' explicitly means @chat.session.post injection.

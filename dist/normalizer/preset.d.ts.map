@@ -1,1 +1,1 @@
-{"version":3,"file":"preset.d.ts","sourceRoot":"","sources":["../../src/normalizer/preset.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,sBAAsB,EAAE,qBAAqB,EAA2B,MAAM,aAAa,CAAA;AAGzG,wBAAgB,wBAAwB,CACtC,MAAM,EAAE,UAAU,GAAG,MAAM,GAAG,qBAAqB,EACnD,WAAW,CAAC,EAAE,MAAM,GACnB,sBAAsB,CAodxB"}
+{"version":3,"file":"preset.d.ts","sourceRoot":"","sources":["../../src/normalizer/preset.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,sBAAsB,EAAE,qBAAqB,EAA2B,MAAM,aAAa,CAAA;AAGzG,wBAAgB,wBAAwB,CACtC,MAAM,EAAE,UAAU,GAAG,MAAM,GAAG,qBAAqB,EACnD,WAAW,CAAC,EAAE,MAAM,GACnB,sBAAsB,CA0cxB"}

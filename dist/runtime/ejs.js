@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import { newQuickJSWASMModule, newVariant, RELEASE_SYNC } from 'quickjs-emscripten';
-import { ejsProcessorId, mvuComponentPath } from './constants.js';
+import { ejsProcessorId, legacyMvuComponentPath, mvuComponentPath } from './constants.js';
 const require = createRequire(import.meta.url);
 const sourceBuild = import.meta.url.endsWith('.ts');
 const librarySources = Promise.all([
@@ -161,7 +161,8 @@ function guestEnvironment(context) {
     const path = mvuComponentPath.slice(1).split('/');
     return `
     globalThis.__timeline = ${JSON.stringify(context.timeline?.value ?? null)};
-    globalThis.__mvu = __timeline && _.get(__timeline, ${JSON.stringify(path)});
+    globalThis.__mvu = __timeline && (_.get(__timeline, ${JSON.stringify(path)})
+      ?? _.get(__timeline, ${JSON.stringify(legacyMvuComponentPath.slice(1).split("/"))}));
     const unsupported = name => { throw Error(name + ' is outside STBridge data-layer compatibility') };
     globalThis.getvar = globalThis.getVariable = function(path, options = {}) {
       if (typeof options !== 'object' || options === null) unsupported('getvar options');

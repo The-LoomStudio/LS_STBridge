@@ -144,9 +144,9 @@ export function convertSillyTavernCard(
       description: fullDescription || undefined,
       preset: systemPrompt ? { system: systemPrompt } : undefined,
       opening: greetings.length ? {
-        entries: [{ role: 'assistant', content: greetings[0]! }],
+        id: randomUUID(), content: greetings[0]!,
         ...(greetings.length > 1 ? {
-          alternatives: greetings.slice(1).map(content => ({ entries: [{ role: 'assistant' as const, content }] })),
+          alternatives: greetings.slice(1).map(content => ({ id: randomUUID(), content })),
         } : {}),
       } : undefined,
     },

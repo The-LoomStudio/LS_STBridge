@@ -301,24 +301,14 @@ export function convertSillyTavernPreset(source, defaultName) {
             children: baseSystemVirtualNodes,
         });
     }
-    // Session Message
+    // Session expands to native messages and must remain outside a Message block.
     messageBlocks.push({
-        id: `preset-msg-session-${randomUUID().slice(0, 8)}`,
-        label: 'Session Message',
-        meta: 'message.system',
+        id: `preset-virtual-session-${randomUUID().slice(0, 8)}`,
+        label: '@chat.session',
+        meta: 'preset.virtual',
         category: 'preset',
-        kind: 'message',
-        capabilities: { roleHint: 'system' },
-        children: [
-            {
-                id: `preset-virtual-session-${randomUUID().slice(0, 8)}`,
-                label: '@chat.session',
-                meta: 'preset.virtual',
-                category: 'preset',
-                kind: 'virtual',
-                capabilities: { targetAnchorId: '@chat.session' },
-            },
-        ],
+        kind: 'virtual',
+        capabilities: { targetAnchorId: '@chat.session' },
     });
     // Post-Session 阶段
     const basePostVirtualNodes = [];

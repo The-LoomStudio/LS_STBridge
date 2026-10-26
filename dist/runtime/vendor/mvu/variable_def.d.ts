@@ -66,8 +66,8 @@ export interface VariableData {
     new_variables?: MvuData;
 }
 export declare const exported_events: {
-    readonly INVOKE_MVU_PROCESS: "mag_invoke_mvu";
-    readonly UPDATE_VARIABLE: "mag_update_variable";
+    readonly INVOKE_MVU_PROCESS: 'mag_invoke_mvu';
+    readonly UPDATE_VARIABLE: 'mag_update_variable';
 };
 export type MvuData = {
     /** 已初始化的 lorebook 列表 */
@@ -115,9 +115,9 @@ export type MvuData = {
 export declare function isMvuData(variables: Record<string, any>): variables is MvuData;
 export declare const variable_events: {
     /** 新开聊天对变量初始化时触发的事件  */
-    readonly VARIABLE_INITIALIZED: "mag_variable_initialized";
+    readonly VARIABLE_INITIALIZED: 'mag_variable_initialized';
     /** 某轮变量更新开始时触发的事件 */
-    readonly VARIABLE_UPDATE_STARTED: "mag_variable_update_started";
+    readonly VARIABLE_UPDATE_STARTED: 'mag_variable_update_started';
     /**
      * 某轮变量更新过程中, 对文本成功解析了所有更新命令时触发的事件
      *
@@ -148,7 +148,7 @@ export declare const variable_events: {
      *   });
      * });
      */
-    readonly COMMAND_PARSED: "mag_command_parsed";
+    readonly COMMAND_PARSED: 'mag_command_parsed';
     /**
      * 某轮变量更新结束时触发的事件
      *
@@ -170,11 +170,11 @@ export declare const variable_events: {
      *   _.set(variables, 'stat_data.角色.络络.好感度', _.clamp(new_value, old_value - 3, old_value + 3));
      * });
      */
-    readonly VARIABLE_UPDATE_ENDED: "mag_variable_update_ended";
+    readonly VARIABLE_UPDATE_ENDED: 'mag_variable_update_ended';
     /** 即将用更新后的变量更新楼层时触发的事件  */
-    readonly BEFORE_MESSAGE_UPDATE: "mag_before_message_update";
+    readonly BEFORE_MESSAGE_UPDATE: 'mag_before_message_update';
     /** @deprecated */
-    readonly SINGLE_VARIABLE_UPDATED: "mag_variable_updated";
+    readonly SINGLE_VARIABLE_UPDATED: 'mag_variable_updated';
 };
 export type UpdateContext = {
     variables: MvuData;

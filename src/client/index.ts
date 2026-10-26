@@ -1,4 +1,4 @@
-import type { ClientExtensionModule } from '@loom-studio/extension-sdk'
+import type { ClientExtensionModule, ClientRendererContext } from '@loom-studio/extension-sdk'
 
 const module: ClientExtensionModule = {
   activate(context) {
@@ -10,7 +10,7 @@ const module: ClientExtensionModule = {
       adapter: 'direct',
     }, {
       mount(root, rendererContext) {
-        mountMigrationModal(root, context, rendererContext.close)
+        return mountMigrationModal(root, context, rendererContext)
       },
     })
 
@@ -25,7 +25,7 @@ const module: ClientExtensionModule = {
 function mountMigrationModal(
   root: HTMLElement,
   context: Parameters<NonNullable<ClientExtensionModule['activate']>>[0],
-  close: () => void,
+  rendererContext: Pick<ClientRendererContext, 'close' | 'signal'>,
 ) {
   root.replaceChildren()
   root.className = 'stbridge-migration-root'
@@ -74,23 +74,86 @@ function mountMigrationModal(
   progressBar.hidden = true
   const results = modal.querySelector('.stbridge-migration-results') as HTMLElement
   modal.querySelector('.stbridge-migration-body')?.insertBefore(progressBar, results)
+  const cleanupStatus = document.createElement('p')
+  cleanupStatus.className = 'stbridge-migration-status'
+  cleanupStatus.setAttribute('role', 'status')
+  cleanupStatus.hidden = true
+  modal.querySelector('.stbridge-migration-body')?.append(cleanupStatus)
   const importButton = modal.querySelector('[data-action="import"]') as HTMLButtonElement
+  const scanButton = modal.querySelector('[data-action="choose"]') as HTMLButtonElement
   let scanned: ScanResult | undefined
+  let currentScan: { sessionId?: string; timer?: number } | undefined
+  let disposed = false
+  let committing = false
 
-  modal.querySelector('[data-action="close"]')?.addEventListener('click', close)
-  modal.querySelector('[data-action="choose"]')?.addEventListener('click', () => {
+  function cancelSession(sessionId: string) {
+    void context.rpc.call('sillytavern.importer.migration.cancel', { sessionId }).catch(error => {
+      context.logger.warn('ST migration staging cleanup failed', { sessionId, error: String(error) })
+      if (!disposed) {
+        cleanupStatus.textContent = `旧扫描清理失败：${error instanceof Error ? error.message : String(error)}。旧结果已作废，临时文件可能仍保留。`
+        cleanupStatus.hidden = false
+      }
+    })
+  }
+  function releaseScan() {
+    const previous = currentScan
+    currentScan = undefined
+    scanned = undefined
+    if (previous?.timer !== undefined) window.clearTimeout(previous.timer)
+    if (previous?.sessionId) cancelSession(previous.sessionId)
+  }
+  function dispose() {
+    if (disposed) return
+    disposed = true
+    rendererContext.signal.removeEventListener('abort', dispose)
+    releaseScan()
+  }
+  rendererContext.signal.addEventListener('abort', dispose, { once: true })
+  if (rendererContext.signal.aborted) dispose()
+  modal.querySelector('[data-action="close"]')?.addEventListener('click', () => {
+    dispose()
+    rendererContext.close()
+  })
+  pathInput.addEventListener('input', () => {
+    if (disposed || committing) return
+    releaseScan()
+    status.textContent = '路径已更改，请重新扫描。'
+    results.hidden = true
+    importButton.hidden = true
+    progressBar.hidden = true
+  })
+  scanButton.addEventListener('click', () => {
+    if (disposed || committing) return
     const directory = pathInput.value.trim()
     if (!directory) {
       status.textContent = '请先输入 ST Data 目录路径。'
       return
+    }
+    releaseScan()
+    const scan: NonNullable<typeof currentScan> = {}
+    currentScan = scan
+    const isCurrent = () => !disposed && currentScan === scan
+    const fail = (error: unknown) => {
+      if (!isCurrent()) return
+      releaseScan()
+      status.textContent = `扫描失败：${error instanceof Error ? error.message : String(error)}`
+      results.hidden = true
+      importButton.hidden = true
+      progressBar.hidden = true
     }
     status.textContent = '正在请求后端扫描……'
     importButton.hidden = true
     results.hidden = false
     results.textContent = '后端正在扫描兼容目录……'
     void context.rpc.call<{ sessionId: string; mode?: string }>('sillytavern.importer.migration.start', { directory }).then(async migration => {
-      for (;;) {
+      scan.sessionId = migration.sessionId
+      if (!isCurrent()) {
+        cancelSession(migration.sessionId)
+        return
+      }
+      const inspect = async () => {
         const report = await context.rpc.call<{ counts: { cards: number; chats: number; presets: number; worlds: number }; files: number; bytes: number; scan: { status: string; processed: number; total: number; currentPath: string; error?: string } }>('sillytavern.importer.migration.inspect', { sessionId: migration.sessionId })
+        if (!isCurrent()) return
         progressBar.hidden = false
         progressBar.max = Math.max(1, report.scan.total)
         progressBar.value = report.scan.processed
@@ -105,30 +168,48 @@ function mountMigrationModal(
           importButton.disabled = report.files === 0
           return
         }
-        await new Promise(resolve => window.setTimeout(resolve, 250))
+        scan.timer = window.setTimeout(() => { void inspect().catch(fail) }, 250)
       }
-    }).catch(error => {
-      status.textContent = `扫描失败：${error instanceof Error ? error.message : String(error)}`
-      results.hidden = true
-      importButton.hidden = true
-      progressBar.hidden = true
-    })
+      await inspect()
+    }).catch(fail)
   })
   importButton.addEventListener('click', () => {
-    if (!scanned) return
+    if (disposed || committing || !scanned) return
+    const sessionId = scanned.migrationSessionId
+    // The host owns cleanup once commit starts; closing the panel must not cancel accepted writes.
+    currentScan = undefined
+    scanned = undefined
+    committing = true
+    pathInput.disabled = true
+    scanButton.disabled = true
     importButton.disabled = true
     status.textContent = '正在迁移……'
-    void context.rpc.call<{ imported: number }>('sillytavern.importer.migration.commit', {
-      sessionId: scanned.migrationSessionId,
-    }).then(report => {
-      status.textContent = `迁移完成：${report.imported} 项成功。`
+    void context.imports.commit(sessionId).then(report => {
+      if (disposed) return
+      status.textContent = `迁移完成：${report.imported} 项成功，${report.skipped.length} 项跳过。`
       importButton.hidden = true
       results.append(document.createTextNode('后端已完成确认后的正式导入。'))
+      if (report.skipped.length) {
+        const list = document.createElement('ul')
+        for (const item of report.skipped) {
+          const row = document.createElement('li')
+          row.textContent = `${item.key}：${item.reason}`
+          list.append(row)
+        }
+        results.append(list)
+      }
     }).catch(error => {
+      if (disposed) return
       status.textContent = `迁移失败：${error instanceof Error ? error.message : String(error)}`
-      importButton.disabled = false
+      importButton.hidden = true
+    }).finally(() => {
+      committing = false
+      if (disposed) return
+      pathInput.disabled = false
+      scanButton.disabled = false
     })
   })
+  return { dispose }
 }
 
 type ScanItem = { kind: 'card' | 'chat' | 'preset' | 'world'; file: File; path: string }
@@ -157,8 +238,8 @@ export function normalizeScanPath(path: string, hasDefaultUserRoot: boolean) {
 
 export function compatibleFileKind(path: string): ScanItem['kind'] | undefined {
   const lower = path.toLowerCase()
-  if (/(^|\/)characters\/[^/]+\.(png|json)$/.test(lower)) return 'card'
-  if (/(^|\/)chats\/[^/]+\/[^/]+\.jsonl$/.test(lower)) return 'chat'
+  if (/(^|\/)characters\/.+\.(png|json)$/.test(lower)) return 'card'
+  if (/(^|\/)chats\/.+\/[^/]+\.jsonl$/.test(lower)) return 'chat'
   if (/(^|\/)worlds\/[^/]+\.json$/.test(lower)) return 'world'
   if (/(^|\/)openai settings\/[^/]+\.json$/.test(lower)) return 'preset'
   return undefined

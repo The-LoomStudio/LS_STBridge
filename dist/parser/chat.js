@@ -1,9 +1,9 @@
-export function convertSillyTavernChat(source) {
+export function convertSillyTavernChat(source, fallbackTitle = 'SillyTavern Chat') {
     const text = typeof source === 'string' ? source : Buffer.from(source).toString('utf8');
     const lines = text.split(/\r?\n/).filter(line => line.trim());
     if (lines.length === 0)
         throw new Error('SillyTavern chat is empty');
-    let title = 'SillyTavern Chat';
+    let title = fallbackTitle;
     let metadata;
     const messages = [];
     for (const [index, line] of lines.entries()) {

@@ -57,8 +57,10 @@ export function diagnoseSillyTavernRegexScripts(value: JsonValue | undefined): s
 }
 
 function phasesForScript(script: SillyTavernRegexScript): TextTransformPhase[] {
-  if (script.promptOnly) return ['prompt']
-  if (script.markdownOnly) return ['display']
+  if (script.promptOnly || script.markdownOnly) return [
+    ...(script.promptOnly ? ['prompt' as const] : []),
+    ...(script.markdownOnly ? ['display' as const] : []),
+  ]
   if (!Array.isArray(script.placement) || script.placement.length === 0) return ['prompt', 'display']
   const placement = new Set(script.placement.map(value => String(value)))
   const hasPromptPlacement = placement.has('1') || placement.has('2') || placement.has('USER_INPUT') || placement.has('AI_OUTPUT')
@@ -72,7 +74,7 @@ function phasesForScript(script: SillyTavernRegexScript): TextTransformPhase[] {
 function parseRegex(value: string): { pattern: string; flags: string } {
   if (value.startsWith('/')) {
     const end = value.lastIndexOf('/')
-    if (end > 0) return { pattern: value.slice(1, end), flags: value.slice(end + 1) || 'g' }
+    if (end > 0) return { pattern: value.slice(1, end), flags: value.slice(end + 1).trim() || 'g' }
   }
   return { pattern: value, flags: 'g' }
 }

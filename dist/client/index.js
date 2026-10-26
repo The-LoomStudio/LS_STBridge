@@ -9,7 +9,7 @@ var module = {
       adapter: "direct"
     }, {
       mount(root, rendererContext) {
-        mountMigrationModal(root, context, rendererContext.close);
+        return mountMigrationModal(root, context, rendererContext);
       }
     });
     context.commands.register("overall-migration", () => {
@@ -19,7 +19,7 @@ var module = {
     });
   }
 };
-function mountMigrationModal(root, context, close) {
+function mountMigrationModal(root, context, rendererContext) {
   root.replaceChildren();
   root.className = "stbridge-migration-root";
   const style = document.createElement("style");
@@ -67,22 +67,85 @@ function mountMigrationModal(root, context, close) {
   progressBar.hidden = true;
   const results = modal.querySelector(".stbridge-migration-results");
   modal.querySelector(".stbridge-migration-body")?.insertBefore(progressBar, results);
+  const cleanupStatus = document.createElement("p");
+  cleanupStatus.className = "stbridge-migration-status";
+  cleanupStatus.setAttribute("role", "status");
+  cleanupStatus.hidden = true;
+  modal.querySelector(".stbridge-migration-body")?.append(cleanupStatus);
   const importButton = modal.querySelector('[data-action="import"]');
+  const scanButton = modal.querySelector('[data-action="choose"]');
   let scanned;
-  modal.querySelector('[data-action="close"]')?.addEventListener("click", close);
-  modal.querySelector('[data-action="choose"]')?.addEventListener("click", () => {
+  let currentScan;
+  let disposed = false;
+  let committing = false;
+  function cancelSession(sessionId) {
+    void context.rpc.call("sillytavern.importer.migration.cancel", { sessionId }).catch((error) => {
+      context.logger.warn("ST migration staging cleanup failed", { sessionId, error: String(error) });
+      if (!disposed) {
+        cleanupStatus.textContent = `\u65E7\u626B\u63CF\u6E05\u7406\u5931\u8D25\uFF1A${error instanceof Error ? error.message : String(error)}\u3002\u65E7\u7ED3\u679C\u5DF2\u4F5C\u5E9F\uFF0C\u4E34\u65F6\u6587\u4EF6\u53EF\u80FD\u4ECD\u4FDD\u7559\u3002`;
+        cleanupStatus.hidden = false;
+      }
+    });
+  }
+  function releaseScan() {
+    const previous = currentScan;
+    currentScan = void 0;
+    scanned = void 0;
+    if (previous?.timer !== void 0) window.clearTimeout(previous.timer);
+    if (previous?.sessionId) cancelSession(previous.sessionId);
+  }
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    rendererContext.signal.removeEventListener("abort", dispose);
+    releaseScan();
+  }
+  rendererContext.signal.addEventListener("abort", dispose, { once: true });
+  if (rendererContext.signal.aborted) dispose();
+  modal.querySelector('[data-action="close"]')?.addEventListener("click", () => {
+    dispose();
+    rendererContext.close();
+  });
+  pathInput.addEventListener("input", () => {
+    if (disposed || committing) return;
+    releaseScan();
+    status.textContent = "\u8DEF\u5F84\u5DF2\u66F4\u6539\uFF0C\u8BF7\u91CD\u65B0\u626B\u63CF\u3002";
+    results.hidden = true;
+    importButton.hidden = true;
+    progressBar.hidden = true;
+  });
+  scanButton.addEventListener("click", () => {
+    if (disposed || committing) return;
     const directory = pathInput.value.trim();
     if (!directory) {
       status.textContent = "\u8BF7\u5148\u8F93\u5165 ST Data \u76EE\u5F55\u8DEF\u5F84\u3002";
       return;
     }
+    releaseScan();
+    const scan = {};
+    currentScan = scan;
+    const isCurrent = () => !disposed && currentScan === scan;
+    const fail = (error) => {
+      if (!isCurrent()) return;
+      releaseScan();
+      status.textContent = `\u626B\u63CF\u5931\u8D25\uFF1A${error instanceof Error ? error.message : String(error)}`;
+      results.hidden = true;
+      importButton.hidden = true;
+      progressBar.hidden = true;
+    };
     status.textContent = "\u6B63\u5728\u8BF7\u6C42\u540E\u7AEF\u626B\u63CF\u2026\u2026";
     importButton.hidden = true;
     results.hidden = false;
     results.textContent = "\u540E\u7AEF\u6B63\u5728\u626B\u63CF\u517C\u5BB9\u76EE\u5F55\u2026\u2026";
     void context.rpc.call("sillytavern.importer.migration.start", { directory }).then(async (migration) => {
-      for (; ; ) {
+      scan.sessionId = migration.sessionId;
+      if (!isCurrent()) {
+        cancelSession(migration.sessionId);
+        return;
+      }
+      const inspect = async () => {
         const report = await context.rpc.call("sillytavern.importer.migration.inspect", { sessionId: migration.sessionId });
+        if (!isCurrent()) return;
         progressBar.hidden = false;
         progressBar.max = Math.max(1, report.scan.total);
         progressBar.value = report.scan.processed;
@@ -97,30 +160,49 @@ function mountMigrationModal(root, context, close) {
           importButton.disabled = report.files === 0;
           return;
         }
-        await new Promise((resolve) => window.setTimeout(resolve, 250));
-      }
-    }).catch((error) => {
-      status.textContent = `\u626B\u63CF\u5931\u8D25\uFF1A${error instanceof Error ? error.message : String(error)}`;
-      results.hidden = true;
-      importButton.hidden = true;
-      progressBar.hidden = true;
-    });
+        scan.timer = window.setTimeout(() => {
+          void inspect().catch(fail);
+        }, 250);
+      };
+      await inspect();
+    }).catch(fail);
   });
   importButton.addEventListener("click", () => {
-    if (!scanned) return;
+    if (disposed || committing || !scanned) return;
+    const sessionId = scanned.migrationSessionId;
+    currentScan = void 0;
+    scanned = void 0;
+    committing = true;
+    pathInput.disabled = true;
+    scanButton.disabled = true;
     importButton.disabled = true;
     status.textContent = "\u6B63\u5728\u8FC1\u79FB\u2026\u2026";
-    void context.rpc.call("sillytavern.importer.migration.commit", {
-      sessionId: scanned.migrationSessionId
-    }).then((report) => {
-      status.textContent = `\u8FC1\u79FB\u5B8C\u6210\uFF1A${report.imported} \u9879\u6210\u529F\u3002`;
+    void context.imports.commit(sessionId).then((report) => {
+      if (disposed) return;
+      status.textContent = `\u8FC1\u79FB\u5B8C\u6210\uFF1A${report.imported} \u9879\u6210\u529F\uFF0C${report.skipped.length} \u9879\u8DF3\u8FC7\u3002`;
       importButton.hidden = true;
       results.append(document.createTextNode("\u540E\u7AEF\u5DF2\u5B8C\u6210\u786E\u8BA4\u540E\u7684\u6B63\u5F0F\u5BFC\u5165\u3002"));
+      if (report.skipped.length) {
+        const list = document.createElement("ul");
+        for (const item of report.skipped) {
+          const row = document.createElement("li");
+          row.textContent = `${item.key}\uFF1A${item.reason}`;
+          list.append(row);
+        }
+        results.append(list);
+      }
     }).catch((error) => {
+      if (disposed) return;
       status.textContent = `\u8FC1\u79FB\u5931\u8D25\uFF1A${error instanceof Error ? error.message : String(error)}`;
-      importButton.disabled = false;
+      importButton.hidden = true;
+    }).finally(() => {
+      committing = false;
+      if (disposed) return;
+      pathInput.disabled = false;
+      scanButton.disabled = false;
     });
   });
+  return { dispose };
 }
 function normalizeScanPath(path, hasDefaultUserRoot) {
   const normalized = path.replaceAll("\\", "/");
@@ -133,8 +215,8 @@ function normalizeScanPath(path, hasDefaultUserRoot) {
 }
 function compatibleFileKind(path) {
   const lower = path.toLowerCase();
-  if (/(^|\/)characters\/[^/]+\.(png|json)$/.test(lower)) return "card";
-  if (/(^|\/)chats\/[^/]+\/[^/]+\.jsonl$/.test(lower)) return "chat";
+  if (/(^|\/)characters\/.+\.(png|json)$/.test(lower)) return "card";
+  if (/(^|\/)chats\/.+\/[^/]+\.jsonl$/.test(lower)) return "chat";
   if (/(^|\/)worlds\/[^/]+\.json$/.test(lower)) return "world";
   if (/(^|\/)openai settings\/[^/]+\.json$/.test(lower)) return "preset";
   return void 0;

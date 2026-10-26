@@ -42,11 +42,9 @@ export function initializeMvuData(input: MvuInitialization): MvuResult {
   let statData: JsonObject = {}
   const initialized: JsonObject = {}
   let openingOverride = false
-  for (const opening of input.opening) {
-    for (const match of opening.matchAll(/<initvar>([\s\S]*?)<\/initvar>/gi)) {
-      statData = correctlyMerge(statData, parseInitial(match[1]!))
-      openingOverride = true
-    }
+  for (const match of input.opening.matchAll(/<initvar>([\s\S]*?)<\/initvar>/gi)) {
+    statData = correctlyMerge(statData, parseInitial(match[1]!))
+    openingOverride = true
   }
   for (const resource of input.resources) {
     // A selected opening replaces only its character's primary worldbook.

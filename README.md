@@ -6,16 +6,18 @@ Loom Studio 的 SillyTavern 数据兼容扩展。
 
 - 导入 SillyTavern 角色卡、世界书和预设；
 - 将兼容数据转换为 Loom Studio 原生资源；
-- 通过“整体迁移”扫描 Data 文件夹，并在本次迁移内按语义内容去重 Lore；
+- 通过“整体迁移”递归扫描 Data/characters 与 chats；扩展按项转换，宿主正式导入原生数据和头像，并在本次迁移内按语义内容去重 Lore；
+- 聊天优先匹配完整角色路径，其次匹配唯一的角色文件名；未关联或重名歧义会列为跳过项，标题缺失时使用聊天文件名；
 - 角色卡内嵌世界书会抽取为可共享资源，再以外部引用挂回角色，避免卡片与外部 worlds 文件重复创建；
 - 为后续会话导入、Text Pipeline 正则兼容和远程更新提供独立发布单元。
 
 ## EJS / MVU 数据兼容
 
 新导入的 MVU 卡显式采用 `sillytavern.importer.mvu` State Contribution。完整数据存放在
-`/entities/stCompatibility/mvu/components/data`，保留 `stat_data`、动态 `schema`、
+`/mvu`，保留 `stat_data`、动态 `schema`、
 `initialized_lorebooks` 与更新后的显示/增量字段；不再把正文消息作为变量的权威存储。
 
+- 已有 Timeline 继续在原 `/entities/stCompatibility/mvu/components/data` 地址读写与回滚，不自动改写历史。
 - 初始化读取所选开场和关联世界书，包括 Prompt 已禁用的 `[initvar]` 条目。开场 `<initvar>` 替代主角色世界书初值；其他世界书继续合并。已有 Timeline 不因资源编辑或重载扩展重新初始化。
 - EJS 使用 `ejs` 3.1.10，在 QuickJS 0.32.0 内编译、渲染；提供 `_`、`print`、异步模板、最新 `getvar` / `getVariable`、`getVariables` / `Mvu.getMvuData`。最新楼层可省略或使用 `latest` / `-1`，这些兼容函数仅存在于 Prompt guest。
 - `{{get_message_variable::路径}}` 在 EJS 求值后读取当前 MVU 数据，不把变量内容再次编译成模板。

@@ -5,11 +5,6 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// ../../packages/extension-sdk/dist/index.js
-function defineServerExtension(module) {
-  return module;
-}
-
 // ../../node_modules/.pnpm/zod@4.5.4/node_modules/zod/v4/classic/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -18876,6 +18871,128 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
+// ../../packages/shared/dist/loom-script-metadata.js
+var loomScriptRuntimeSchema = external_exports.enum(["declarative", "client-sandbox", "client", "client-worker", "server"]);
+var loomScriptSettingsSchema = external_exports.record(external_exports.string(), external_exports.union([external_exports.string(), external_exports.number().finite(), external_exports.boolean()]));
+var identifier = external_exports.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/);
+var settingSchema = external_exports.strictObject({
+  key: identifier,
+  label: external_exports.string().trim().min(1),
+  description: external_exports.string().optional(),
+  type: external_exports.enum(["string", "number", "boolean", "select"]),
+  default: external_exports.union([external_exports.string(), external_exports.number().finite(), external_exports.boolean()]),
+  min: external_exports.number().finite().optional(),
+  max: external_exports.number().finite().optional(),
+  options: external_exports.array(external_exports.strictObject({ label: external_exports.string().min(1), value: external_exports.string() })).min(1).optional()
+});
+var matcherSchema = external_exports.strictObject({ kind: external_exports.literal("regex"), pattern: external_exports.string(), flags: external_exports.string() });
+var scriptTextTransformRuleSchema = external_exports.strictObject({
+  name: external_exports.string().trim().min(1),
+  enabled: external_exports.boolean(),
+  orderIndex: external_exports.number().int(),
+  matcher: matcherSchema,
+  effect: external_exports.discriminatedUnion("kind", [
+    external_exports.strictObject({ kind: external_exports.literal("replace"), replacement: external_exports.string() }),
+    external_exports.strictObject({ kind: external_exports.literal("mark"), markerType: external_exports.string().optional() }),
+    external_exports.strictObject({ kind: external_exports.literal("promote-reasoning"), contentGroup: external_exports.union([external_exports.number().int().nonnegative(), external_exports.string()]).optional(), visibility: external_exports.enum(["collapsed", "hidden", "visible"]), replay: external_exports.enum(["omit", "assistant-content"]), dialect: external_exports.string().optional() })
+  ]),
+  targets: external_exports.array(external_exports.enum(["narrative", "agent-session"])).min(1),
+  phases: external_exports.array(external_exports.enum(["classify", "prompt", "display"])).min(1),
+  range: external_exports.strictObject({ minDepth: external_exports.number().int().nonnegative().optional(), maxDepth: external_exports.number().int().nonnegative().optional() }).optional()
+});
+var scriptTextExtractorSchema = external_exports.strictObject({
+  name: external_exports.string().trim().min(1),
+  enabled: external_exports.boolean(),
+  orderIndex: external_exports.number().int(),
+  targets: external_exports.array(external_exports.enum(["narrative", "agent-session"])).min(1),
+  matcher: matcherSchema.extend({ contentGroup: external_exports.union([external_exports.number().int().nonnegative(), external_exports.string()]).optional() }),
+  strategy: external_exports.enum(["latest-valid", "all-matches"]),
+  parser: external_exports.enum(["text", "key-value-lines"]),
+  artifactType: external_exports.string().min(1).optional(),
+  outputSchema: external_exports.record(external_exports.string(), external_exports.json()).optional()
+});
+
+// ../../packages/shared/dist/loom-script-contracts.js
+var loomScriptMountTargetSchema = external_exports.discriminatedUnion("kind", [
+  external_exports.strictObject({ kind: external_exports.literal("workspace"), workspaceId: external_exports.string() }),
+  external_exports.strictObject({ kind: external_exports.literal("card"), cardId: external_exports.string() }),
+  external_exports.strictObject({ kind: external_exports.literal("preset"), presetId: external_exports.string() }),
+  external_exports.strictObject({ kind: external_exports.literal("user") })
+]);
+var loomScriptOwnerSchema = external_exports.union([
+  loomScriptMountTargetSchema,
+  external_exports.strictObject({
+    kind: external_exports.literal("extension"),
+    packageId: external_exports.string().refine((value) => value.trim().length > 0),
+    installationId: external_exports.string().refine((value) => value.trim().length > 0)
+  })
+]);
+var loomScriptMountSchema = external_exports.object({
+  id: external_exports.string(),
+  version: external_exports.number(),
+  target: loomScriptMountTargetSchema,
+  scriptDocumentId: external_exports.string(),
+  enabled: external_exports.boolean(),
+  orderIndex: external_exports.number(),
+  pinnedDocumentVersion: external_exports.number().optional(),
+  grantedCapabilities: external_exports.array(external_exports.string()),
+  adoptedDocumentVersion: external_exports.number().optional(),
+  settings: loomScriptSettingsSchema.optional(),
+  adoptedSettings: loomScriptSettingsSchema.optional(),
+  runtimeRevision: external_exports.number().int().nonnegative().optional(),
+  origin: external_exports.record(external_exports.string(), external_exports.json()),
+  createdAt: external_exports.string(),
+  updatedAt: external_exports.string()
+});
+var createLoomScriptMountInputSchema = external_exports.strictObject({
+  target: loomScriptMountTargetSchema,
+  scriptDocumentId: external_exports.string(),
+  orderIndex: external_exports.number(),
+  pinnedDocumentVersion: external_exports.number().optional(),
+  origin: external_exports.record(external_exports.string(), external_exports.json()).optional()
+});
+var updateLoomScriptMountInputSchema = external_exports.strictObject({
+  mountId: external_exports.string(),
+  expectedVersion: external_exports.number(),
+  enabled: external_exports.boolean(),
+  orderIndex: external_exports.number(),
+  pinnedDocumentVersion: external_exports.number().optional(),
+  grantedCapabilities: external_exports.array(external_exports.string()),
+  settings: loomScriptSettingsSchema.optional()
+});
+var listLoomScriptMountsInputSchema = external_exports.strictObject({
+  target: loomScriptMountTargetSchema.optional(),
+  scriptDocumentId: external_exports.string().optional()
+});
+
+// ../../packages/extension-sdk/dist/index.js
+function defineServerExtension(module) {
+  return module;
+}
+
+// ../../packages/shared/dist/global-search.js
+var globalSearchKindSchema = external_exports.enum(["card", "lore", "preset", "timeline", "session"]);
+var globalSearchScopeSchema = external_exports.object({
+  kind: external_exports.enum(["card", "resource", "extension"]),
+  id: external_exports.string().min(1)
+});
+var searchResourcesInputSchema = external_exports.object({
+  currentCardId: external_exports.string().min(1).optional(),
+  currentPresetId: external_exports.string().min(1).optional(),
+  query: external_exports.string().max(256),
+  scope: globalSearchScopeSchema.optional(),
+  kind: globalSearchKindSchema.optional(),
+  limit: external_exports.number().int().min(1).max(100).optional(),
+  cursor: external_exports.string().max(16e3).optional()
+});
+var listGlobalSearchScopesInputSchema = external_exports.object({
+  currentCardId: external_exports.string().min(1).optional(),
+  currentPresetId: external_exports.string().min(1).optional(),
+  query: external_exports.string().max(256),
+  limit: external_exports.number().int().min(1).max(100).optional(),
+  cursor: external_exports.string().max(16e3).optional()
+});
+
 // ../../packages/shared/dist/prompt-resource-contracts.js
 var loreMountSourceSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("manual"), id: external_exports.literal("global").optional() }),
@@ -19007,11 +19124,11 @@ function extractStCardFromPng(source) {
 }
 
 // src/parser/chat.ts
-function convertSillyTavernChat(source) {
+function convertSillyTavernChat(source, fallbackTitle = "SillyTavern Chat") {
   const text = typeof source === "string" ? source : Buffer.from(source).toString("utf8");
   const lines = text.split(/\r?\n/).filter((line) => line.trim());
   if (lines.length === 0) throw new Error("SillyTavern chat is empty");
-  let title = "SillyTavern Chat";
+  let title = fallbackTitle;
   let metadata;
   const messages = [];
   for (const [index, line] of lines.entries()) {
@@ -19225,16 +19342,13 @@ function convertSillyTavernLorebook(source, defaultName) {
     if (isConstant) {
       activation = { kind: "always" };
       lifecycle = "always";
-    } else if (keys.length > 0) {
+    } else {
       activation = {
         kind: "keyword",
         keywords: keys,
         caseSensitive: isCaseSensitive
       };
       lifecycle = "keyword";
-    } else {
-      activation = { kind: "always" };
-      lifecycle = "always";
     }
     const rawPos = entry.extensions?.position !== void 0 ? entry.extensions.position : entry.position;
     const isAtDepth = rawPos === 4 || rawPos === "at_depth" || rawPos === "atDepth";
@@ -19319,8 +19433,10 @@ function diagnoseSillyTavernRegexScripts(value) {
   });
 }
 function phasesForScript(script) {
-  if (script.promptOnly) return ["prompt"];
-  if (script.markdownOnly) return ["display"];
+  if (script.promptOnly || script.markdownOnly) return [
+    ...script.promptOnly ? ["prompt"] : [],
+    ...script.markdownOnly ? ["display"] : []
+  ];
   if (!Array.isArray(script.placement) || script.placement.length === 0) return ["prompt", "display"];
   const placement = new Set(script.placement.map((value) => String(value)));
   const hasPromptPlacement = placement.has("1") || placement.has("2") || placement.has("USER_INPUT") || placement.has("AI_OUTPUT");
@@ -19333,7 +19449,7 @@ function phasesForScript(script) {
 function parseRegex(value) {
   if (value.startsWith("/")) {
     const end = value.lastIndexOf("/");
-    if (end > 0) return { pattern: value.slice(1, end), flags: value.slice(end + 1) || "g" };
+    if (end > 0) return { pattern: value.slice(1, end), flags: value.slice(end + 1).trim() || "g" };
   }
   return { pattern: value, flags: "g" };
 }
@@ -19453,9 +19569,10 @@ ${data.scenario.trim()}` : ""
       description: fullDescription || void 0,
       preset: systemPrompt ? { system: systemPrompt } : void 0,
       opening: greetings.length ? {
-        entries: [{ role: "assistant", content: greetings[0] }],
+        id: randomUUID2(),
+        content: greetings[0],
         ...greetings.length > 1 ? {
-          alternatives: greetings.slice(1).map((content) => ({ entries: [{ role: "assistant", content }] }))
+          alternatives: greetings.slice(1).map((content) => ({ id: randomUUID2(), content }))
         } : {}
       } : void 0
     },
@@ -19559,11 +19676,11 @@ function convertSillyTavernPreset(source, defaultName) {
     hasLowerAnchor: false
   };
   function toPromptResourceNode(entry, targetAnchorId, localDepth) {
-    const identifier = entry.identifier;
+    const identifier2 = entry.identifier;
     const name2 = entry.prompt.name?.trim() || "";
     const isMarker = Boolean(entry.prompt.marker);
     const content = entry.prompt.content?.trim() || "";
-    if (identifier === "worldInfoBefore" || name2 === "World Info (before)") {
+    if (identifier2 === "worldInfoBefore" || name2 === "World Info (before)") {
       anchorState.hasStableAnchor = true;
       return {
         id: `preset-virtual-setting-stable-${randomUUID3().slice(0, 8)}`,
@@ -19577,7 +19694,7 @@ function convertSillyTavernPreset(source, defaultName) {
         }
       };
     }
-    if (identifier === "worldInfoAfter" || name2 === "World Info (after)") {
+    if (identifier2 === "worldInfoAfter" || name2 === "World Info (after)") {
       anchorState.hasLowerAnchor = true;
       return {
         id: `preset-virtual-setting-lower-${randomUUID3().slice(0, 8)}`,
@@ -19591,7 +19708,7 @@ function convertSillyTavernPreset(source, defaultName) {
         }
       };
     }
-    if (identifier === "dialogueExamples" || name2 === "Chat Examples") {
+    if (identifier2 === "dialogueExamples" || name2 === "Chat Examples") {
       if (!content) {
         return {
           id: `preset-virtual-examples-${randomUUID3().slice(0, 8)}`,
@@ -19606,7 +19723,7 @@ function convertSillyTavernPreset(source, defaultName) {
         };
       }
     }
-    if (["charDescription", "charPersonality", "scenario", "personaDescription"].includes(identifier)) {
+    if (["charDescription", "charPersonality", "scenario", "personaDescription"].includes(identifier2)) {
       if (!content) {
         if (!anchorState.hasStableAnchor) {
           anchorState.hasStableAnchor = true;
@@ -19626,10 +19743,10 @@ function convertSillyTavernPreset(source, defaultName) {
       }
     }
     if (!content && isMarker) return null;
-    const label = name2 || identifier || "Prompt";
+    const label = name2 || identifier2 || "Prompt";
     const role = entry.prompt.role ?? "system";
     return {
-      id: `st-preset-node-${identifier || randomUUID3().slice(0, 8)}`,
+      id: `st-preset-node-${identifier2 || randomUUID3().slice(0, 8)}`,
       label,
       kind: "entry",
       category: "preset",
@@ -19748,22 +19865,12 @@ function convertSillyTavernPreset(source, defaultName) {
     });
   }
   messageBlocks.push({
-    id: `preset-msg-session-${randomUUID3().slice(0, 8)}`,
-    label: "Session Message",
-    meta: "message.system",
+    id: `preset-virtual-session-${randomUUID3().slice(0, 8)}`,
+    label: "@chat.session",
+    meta: "preset.virtual",
     category: "preset",
-    kind: "message",
-    capabilities: { roleHint: "system" },
-    children: [
-      {
-        id: `preset-virtual-session-${randomUUID3().slice(0, 8)}`,
-        label: "@chat.session",
-        meta: "preset.virtual",
-        category: "preset",
-        kind: "virtual",
-        capabilities: { targetAnchorId: "@chat.session" }
-      }
-    ]
+    kind: "virtual",
+    capabilities: { targetAnchorId: "@chat.session" }
   });
   const basePostVirtualNodes = [];
   if (!anchorState.hasLowerAnchor) {
@@ -19874,7 +19981,7 @@ function convertSillyTavernPreset(source, defaultName) {
 }
 
 // src/index.ts
-import { mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { registerStDataRuntime } from "./runtime/register.js";
@@ -19888,8 +19995,8 @@ function sourceFileName() {
 }
 function compatibleMigrationKind(path) {
   const lower = path.toLowerCase().replaceAll("\\", "/");
-  if (/(^|\/)characters\/[^/]+\.(png|json)$/.test(lower)) return "card";
-  if (/(^|\/)chats\/[^/]+\/[^/]+\.jsonl$/.test(lower)) return "chat";
+  if (/(^|\/)characters\/.+\.(png|json)$/.test(lower)) return "card";
+  if (/(^|\/)chats\/.+\/[^/]+\.jsonl$/.test(lower)) return "chat";
   if (/(^|\/)worlds\/[^/]+\.json$/.test(lower)) return "world";
   if (/(^|\/)openai settings\/[^/]+\.json$/.test(lower)) return "preset";
   return void 0;
@@ -19917,14 +20024,17 @@ async function scanDirectory(session, inputDirectory, signal) {
       while (queue.length) {
         signal.throwIfAborted();
         const candidate = queue.shift();
-        const info = await stat(candidate);
-        if (info.isDirectory() && child === "chats") {
+        const info = await lstat(candidate);
+        if (info.isDirectory() && (child === "chats" || child === "characters")) {
           for (const entry of await readdir(candidate, { withFileTypes: true })) queue.push(join(candidate, entry.name));
           continue;
         }
         if (!info.isFile()) continue;
         const relativePath = relative(scanRoot, candidate).split(sep).join("/");
-        if (compatibleMigrationKind(relativePath)) paths.push(relativePath);
+        if (compatibleMigrationKind(relativePath)) {
+          if (paths.length >= migrationMaxFiles) throw new Error(`Migration exceeds ${migrationMaxFiles} files`);
+          paths.push(relativePath);
+        }
       }
     }
     session.scan.total = paths.length;
@@ -19999,6 +20109,7 @@ var activate = defineServerExtension({
         if (session) await expireMigrationSession(params.sessionId, session);
         throw new Error("Migration session expired");
       }
+      if (session.preparation) throw new Error("Migration input is already prepared; start a new scan to change files");
       const newPaths = new Set(params.files.flatMap((value) => isRecord(value) && typeof value.path === "string" && !session.files.has(value.path) ? [value.path] : []));
       if (session.files.size + newPaths.size > migrationMaxFiles) {
         throw new Error(`Migration exceeds ${migrationMaxFiles} files`);
@@ -20076,69 +20187,76 @@ var activate = defineServerExtension({
       }
       return { counts: session.counts, files: session.files.size, bytes: session.totalBytes, scan: session.scan };
     });
-    ctx.rpc.register("sillytavern.importer.migration.commit", async (params) => {
-      if (!isRecord(params) || typeof params.sessionId !== "string") throw new Error("migration.commit requires sessionId");
+    ctx.rpc.register("sillytavern.importer.migration.prepare", async (params) => {
+      if (!isRecord(params) || typeof params.sessionId !== "string" || typeof params.index !== "number" || !Number.isSafeInteger(params.index) || params.index < 0) throw new Error("migration.prepare requires sessionId and index");
       const session = migrationSessions.get(params.sessionId);
       if (!session) throw new Error("Migration session not found");
-      if (session.chunks.size > 0) throw new Error("Migration is incomplete: some files are still uploading");
-      const cards = /* @__PURE__ */ new Map();
-      const worlds = /* @__PURE__ */ new Map();
-      let imported = 0;
-      for (const [, item] of session.sources) {
-        if (item.kind === "world") {
-          const source = (await readFile(join(session.stagingDirectory, String(item.source)))).toString("utf8");
-          const artifact = convertSillyTavernLorebook(source).artifact;
-          const key = semanticFingerprint(artifact.rootNode);
-          if (!worlds.has(key)) {
-            const created = await ctx.rpc.call("application.importPromptResource", { artifact });
-            worlds.set(key, created.resource.id);
-            imported += 1;
-          }
-        }
+      if (Date.now() - session.createdAt > migrationSessionTtlMs) {
+        await expireMigrationSession(params.sessionId, session);
+        throw new Error("Migration session expired");
       }
-      for (const [path, item] of session.sources) {
+      if (session.chunks.size > 0 || session.scanTask && session.scan.status !== "completed")
+        throw new Error("Migration scan or upload is incomplete");
+      if (!session.preparation) {
+        session.preparation = {
+          paths: ["world", "card", "preset", "chat"].flatMap((kind) => [...session.sources].filter(([, item]) => item.kind === kind).map(([path2]) => path2)),
+          worlds: /* @__PURE__ */ new Map()
+        };
+      }
+      const path = session.preparation.paths[params.index];
+      if (path === void 0) return null;
+      try {
+        const item = session.sources.get(path);
+        const bytes = await readFile(join(session.stagingDirectory, String(item.source)));
+        if (item.kind === "world") {
+          const artifact = convertSillyTavernLorebook(bytes.toString("utf8")).artifact;
+          const fingerprint = semanticFingerprint(artifact.rootNode);
+          if (session.preparation.worlds.has(fingerprint) && session.preparation.worlds.get(fingerprint) !== path) return { kind: "skipped", key: path, reason: "\u76F8\u540C\u5185\u5BB9\u7684\u4E16\u754C\u4E66\u5DF2\u5728\u672C\u6279\u6B21\u5BFC\u5165" };
+          session.preparation.worlds.set(fingerprint, path);
+          return { kind: "prompt-resource", key: path, artifact };
+        }
         if (item.kind === "card") {
-          const source = await readFile(join(session.stagingDirectory, String(item.source)));
-          const artifact = convertSillyTavernCard(
-            source
-          ).artifact;
-          const sharedIds = [];
-          artifact.contextAssets = artifact.contextAssets.filter((asset) => {
-            if (asset.category !== "lore") return true;
-            const key = semanticFingerprint(asset);
-            const worldId = worlds.get(key);
-            if (!worldId) return true;
-            sharedIds.push(worldId);
+          const converted = convertSillyTavernCard(bytes);
+          const promptResourceKeys = [];
+          converted.artifact.contextAssets = converted.artifact.contextAssets.filter((asset) => {
+            const worldKey = asset.category === "lore" ? session.preparation.worlds.get(semanticFingerprint(asset)) : void 0;
+            if (!worldKey) return true;
+            promptResourceKeys.push(worldKey);
             return false;
           });
-          const created = await ctx.rpc.call("application.importCardBundle", { artifact });
-          if (sharedIds.length) await ctx.rpc.call("application.updateCardPromptResources", {
-            cardId: created.card.id,
-            promptResourceIds: [.../* @__PURE__ */ new Set([...created.card.promptResourceIds ?? [], ...sharedIds])],
-            externalPromptResourceIds: sharedIds
-          });
-          cards.set(characterKeyFromPath(path), created.card.id);
-          imported += 1;
-        } else if (item.kind === "preset") {
-          const source = (await readFile(join(session.stagingDirectory, String(item.source)))).toString("utf8");
-          await ctx.rpc.call("application.importPromptResource", {
-            artifact: convertSillyTavernPreset(JSON.parse(source)).artifact
-          });
-          imported += 1;
+          return {
+            kind: "card",
+            key: path,
+            artifact: converted.artifact,
+            promptResourceKeys,
+            ...converted.avatarBytes ? { avatarBase64: Buffer.from(converted.avatarBytes).toString("base64") } : {}
+          };
         }
-      }
-      for (const [path, item] of session.sources) {
-        if (item.kind !== "chat") continue;
+        if (item.kind === "preset") return {
+          kind: "prompt-resource",
+          key: path,
+          artifact: convertSillyTavernPreset(JSON.parse(bytes.toString("utf8"))).artifact
+        };
         const key = characterKeyFromPath(path);
-        const cardId = cards.get(key);
-        if (!cardId) continue;
-        const source = (await readFile(join(session.stagingDirectory, String(item.source)))).toString("utf8");
-        const chat = convertSillyTavernChat(source);
-        await ctx.rpc.call("application.createNarrativeTimeline", { cardId, title: chat.title, openingNodes: chat.messages });
-        imported += 1;
+        const cardPaths = [...session.sources].filter(([, source]) => source.kind === "card").map(([candidate]) => candidate);
+        let matches = cardPaths.filter((candidate) => characterKeyFromPath(candidate) === key);
+        if (!matches.length) matches = cardPaths.filter((candidate) => characterKeyFromPath(candidate).split("/").at(-1) === key.split("/").at(-1));
+        if (matches.length !== 1) return {
+          kind: "skipped",
+          key: path,
+          reason: matches.length ? "\u5B58\u5728\u591A\u5F20\u540C\u540D\u89D2\u8272\u5361\uFF0C\u65E0\u6CD5\u786E\u5B9A\u804A\u5929\u6240\u5C5E\u89D2\u8272" : "\u6CA1\u6709\u627E\u5230\u804A\u5929\u5BF9\u5E94\u7684\u89D2\u8272\u5361"
+        };
+        const chat = convertSillyTavernChat(bytes.toString("utf8"), path.split("/").at(-1).replace(/\.jsonl$/i, ""));
+        return {
+          kind: "history",
+          key: path,
+          cardKey: matches[0],
+          title: chat.title,
+          messages: chat.messages.map(({ content, createdAt }) => ({ content, ...createdAt ? { createdAt } : {} }))
+        };
+      } catch (error61) {
+        throw new Error(`\u8F6C\u6362 ${path} \u5931\u8D25\uFF1A${error61 instanceof Error ? error61.message : String(error61)}`, { cause: error61 });
       }
-      await expireMigrationSession(params.sessionId, session);
-      return { imported };
     });
     ctx.rpc.register("sillytavern.importer.migration.cancel", async (params) => {
       if (isRecord(params) && typeof params.sessionId === "string") {
@@ -20270,9 +20388,10 @@ function decodeMigrationChunk(value, path) {
   return value;
 }
 function characterKeyFromPath(path) {
-  const normalized = path.replaceAll("\\", "/");
-  const match = normalized.match(/(?:^|\/)(?:characters|chats)\/([^/]+)/i);
-  return match?.[1]?.replace(/\.(?:png|jsonl?)$/i, "").toLowerCase() ?? "";
+  const normalized = path.replaceAll("\\", "/").toLowerCase();
+  const character = normalized.match(/(?:^|\/)characters\/(.+)\.(?:png|json)$/);
+  if (character) return character[1];
+  return normalized.match(/(?:^|\/)chats\/(.+)\/[^/]+\.jsonl$/)?.[1] ?? "";
 }
 function semanticFingerprint(value) {
   return JSON.stringify(canonicalizeSemanticValue(value));

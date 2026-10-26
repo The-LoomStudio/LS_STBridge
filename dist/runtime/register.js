@@ -1803,7 +1803,8 @@ async function newQuickJSWASMModule(variantOrPromise = src_default) {
 // src/runtime/constants.ts
 var ejsProcessorId = "sillytavern.importer/ejs";
 var mvuContributionId = "sillytavern.importer.mvu";
-var mvuComponentPath = "/entities/stCompatibility/mvu/components/data";
+var mvuComponentPath = "/mvu";
+var legacyMvuComponentPath = "/entities/stCompatibility/mvu/components/data";
 
 // src/runtime/ejs.ts
 var require2 = createRequire(import.meta.url);
@@ -1948,7 +1949,8 @@ function guestEnvironment(context) {
   const path = mvuComponentPath.slice(1).split("/");
   return `
     globalThis.__timeline = ${JSON.stringify(context.timeline?.value ?? null)};
-    globalThis.__mvu = __timeline && _.get(__timeline, ${JSON.stringify(path)});
+    globalThis.__mvu = __timeline && (_.get(__timeline, ${JSON.stringify(path)})
+      ?? _.get(__timeline, ${JSON.stringify(legacyMvuComponentPath.slice(1).split("/"))}));
     const unsupported = name => { throw Error(name + ' is outside STBridge data-layer compatibility') };
     globalThis.getvar = globalThis.getVariable = function(path, options = {}) {
       if (typeof options !== 'object' || options === null) unsupported('getvar options');
@@ -2035,13 +2037,11 @@ async function runMvu(input, signal) {
 // src/runtime/register.ts
 var mvuContribution = {
   id: mvuContributionId,
-  entityTypes: [{ id: "sillytavern-importer-compatibility", collectionPath: "entities.stCompatibility" }],
-  entities: [{ typeId: "sillytavern-importer-compatibility", entityId: "mvu" }],
+  entityTypes: [],
+  entities: [],
   templates: [{
     id: mvuContributionId,
     templateVersion: 1,
-    componentKey: "data",
-    targetEntityTypeIds: ["sillytavern-importer-compatibility"],
     schema: {
       type: "object",
       required: ["stat_data", "schema", "initialized_lorebooks"],
@@ -2049,13 +2049,8 @@ var mvuContribution = {
     },
     initial: { stat_data: {}, schema: {}, initialized_lorebooks: {} }
   }],
-  componentMounts: [{
-    templateId: mvuContributionId,
-    templateVersion: 1,
-    componentKey: "data",
-    target: { kind: "entity", entity: { typeId: "sillytavern-importer-compatibility", entityId: "mvu" } }
-  }],
-  bindings: []
+  componentMounts: [],
+  bindings: [{ path: "mvu", templateId: mvuContributionId, templateVersion: 1 }]
 };
 function registerStDataRuntime(ctx) {
   ctx.prompt.registerProcessor(ejsProcessor);
@@ -2063,7 +2058,10 @@ function registerStDataRuntime(ctx) {
     async initialize(context) {
       const result = await runMvu({ kind: "initialize", context: {
         opening: context.opening,
-        resources: context.resources
+        resources: context.resources.map((resource) => ({
+          ...resource,
+          entries: resource.entries.filter((entry) => entry.label.toLowerCase().includes("[initvar]"))
+        }))
       } }, context.signal);
       return { [mvuContributionId]: result.value };
     }
@@ -2072,6 +2070,7 @@ function registerStDataRuntime(ctx) {
     id: "sillytavern.importer/mvu",
     contributionId: mvuContributionId,
     path: mvuComponentPath,
+    legacyPaths: [legacyMvuComponentPath],
     async process(input) {
       if (!/_\.(?:set|insert|assign|remove|unset|delete|add)\(|<json_?patch>/i.test(input.text)) return void 0;
       const result = await runMvu({ kind: "update", text: input.text, value: input.value }, input.signal);

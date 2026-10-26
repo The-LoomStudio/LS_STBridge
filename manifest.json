@@ -33,7 +33,7 @@
           ,{ "name": "sillytavern.importer.migration.start" }
           ,{ "name": "sillytavern.importer.migration.appendBatch" }
           ,{ "name": "sillytavern.importer.migration.inspect" }
-          ,{ "name": "sillytavern.importer.migration.commit" }
+          ,{ "name": "sillytavern.importer.migration.prepare" }
           ,{ "name": "sillytavern.importer.migration.cancel" }
         ]
       }

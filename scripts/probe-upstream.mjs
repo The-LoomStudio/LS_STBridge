@@ -55,7 +55,7 @@ try {
   const { session } = await runtime.createAgentSession({ agentPresetId: preset.id, timelineId: timeline.id })
   const target = { timelineId: timeline.id, branchId: branch.id }
   const value = async () => (await runtime.getStateSnapshot({ target: { scope: 'timeline', ...target } }))
-    .snapshot.value.entities.stCompatibility.mvu.components.data.stat_data.理.好感度[0]
+    .snapshot.value.mvu.stat_data.理.好感度[0]
   const before = await value()
   const preview = await runtime.previewAgentTurn({ agentSessionId: session.id, input: '继续', narrativeTarget: target })
   if (preview.messages.some(message => message.content?.includes('{{get_message_variable::')))

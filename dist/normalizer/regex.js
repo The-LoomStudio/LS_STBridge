@@ -42,10 +42,11 @@ export function diagnoseSillyTavernRegexScripts(value) {
     });
 }
 function phasesForScript(script) {
-    if (script.promptOnly)
-        return ['prompt'];
-    if (script.markdownOnly)
-        return ['display'];
+    if (script.promptOnly || script.markdownOnly)
+        return [
+            ...(script.promptOnly ? ['prompt'] : []),
+            ...(script.markdownOnly ? ['display'] : []),
+        ];
     if (!Array.isArray(script.placement) || script.placement.length === 0)
         return ['prompt', 'display'];
     const placement = new Set(script.placement.map(value => String(value)));
@@ -60,7 +61,7 @@ function parseRegex(value) {
     if (value.startsWith('/')) {
         const end = value.lastIndexOf('/');
         if (end > 0)
-            return { pattern: value.slice(1, end), flags: value.slice(end + 1) || 'g' };
+            return { pattern: value.slice(1, end), flags: value.slice(end + 1).trim() || 'g' };
     }
     return { pattern: value, flags: 'g' };
 }

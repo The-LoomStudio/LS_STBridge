@@ -1,27 +1,23 @@
 import type { ExtensionActivationContext } from '@loom-studio/extension-sdk'
 import type { StateContribution } from '@loom-studio/shared'
 import { ejsProcessor } from './ejs.js'
-import { mvuComponentPath, mvuContributionId } from './constants.js'
+import { legacyMvuComponentPath, mvuComponentPath, mvuContributionId } from './constants.js'
 import { runMvu } from './mvu.js'
 
 export const mvuContribution: StateContribution = {
   id: mvuContributionId,
-  entityTypes: [{ id: 'sillytavern-importer-compatibility', collectionPath: 'entities.stCompatibility' }],
-  entities: [{ typeId: 'sillytavern-importer-compatibility', entityId: 'mvu' }],
+  entityTypes: [],
+  entities: [],
   templates: [{
-    id: mvuContributionId, templateVersion: 1, componentKey: 'data',
-    targetEntityTypeIds: ['sillytavern-importer-compatibility'],
+    id: mvuContributionId, templateVersion: 1,
     schema: {
       type: 'object', required: ['stat_data', 'schema', 'initialized_lorebooks'],
       properties: { stat_data: { type: 'object' }, schema: { type: 'object' }, initialized_lorebooks: { type: 'object' } },
     },
     initial: { stat_data: {}, schema: {}, initialized_lorebooks: {} },
   }],
-  componentMounts: [{
-    templateId: mvuContributionId, templateVersion: 1, componentKey: 'data',
-    target: { kind: 'entity', entity: { typeId: 'sillytavern-importer-compatibility', entityId: 'mvu' } },
-  }],
-  bindings: [],
+  componentMounts: [],
+  bindings: [{ path: 'mvu', templateId: mvuContributionId, templateVersion: 1 }],
 }
 
 export function registerStDataRuntime(ctx: ExtensionActivationContext): void {
@@ -29,7 +25,11 @@ export function registerStDataRuntime(ctx: ExtensionActivationContext): void {
   ctx.state.contribute(mvuContribution, {
     async initialize(context) {
       const result = await runMvu({ kind: 'initialize', context: {
-        opening: context.opening, resources: context.resources,
+        opening: context.opening,
+        resources: context.resources.map(resource => ({
+          ...resource,
+          entries: resource.entries.filter(entry => entry.label.toLowerCase().includes('[initvar]')),
+        })),
       } }, context.signal)
       return { [mvuContributionId]: result.value }
     },
@@ -38,6 +38,7 @@ export function registerStDataRuntime(ctx: ExtensionActivationContext): void {
     id: 'sillytavern.importer/mvu',
     contributionId: mvuContributionId,
     path: mvuComponentPath,
+    legacyPaths: [legacyMvuComponentPath],
     async process(input) {
       if (!/_\.(?:set|insert|assign|remove|unset|delete|add)\(|<json_?patch>/i.test(input.text)) return undefined
       const result = await runMvu({ kind: 'update', text: input.text, value: input.value }, input.signal)

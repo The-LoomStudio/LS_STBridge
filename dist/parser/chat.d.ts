@@ -15,5 +15,5 @@ export type SillyTavernChatConversion = {
     }>;
     metadata?: JsonObject;
 };
-export declare function convertSillyTavernChat(source: string | Uint8Array): SillyTavernChatConversion;
+export declare function convertSillyTavernChat(source: string | Uint8Array, fallbackTitle?: string): SillyTavernChatConversion;
 //# sourceMappingURL=chat.d.ts.map

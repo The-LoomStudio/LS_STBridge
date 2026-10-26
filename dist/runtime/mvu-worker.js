@@ -35623,6 +35623,29 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
+// ../../packages/shared/dist/global-search.js
+var globalSearchKindSchema = external_exports.enum(["card", "lore", "preset", "timeline", "session"]);
+var globalSearchScopeSchema = external_exports.object({
+  kind: external_exports.enum(["card", "resource", "extension"]),
+  id: external_exports.string().min(1)
+});
+var searchResourcesInputSchema = external_exports.object({
+  currentCardId: external_exports.string().min(1).optional(),
+  currentPresetId: external_exports.string().min(1).optional(),
+  query: external_exports.string().max(256),
+  scope: globalSearchScopeSchema.optional(),
+  kind: globalSearchKindSchema.optional(),
+  limit: external_exports.number().int().min(1).max(100).optional(),
+  cursor: external_exports.string().max(16e3).optional()
+});
+var listGlobalSearchScopesInputSchema = external_exports.object({
+  currentCardId: external_exports.string().min(1).optional(),
+  currentPresetId: external_exports.string().min(1).optional(),
+  query: external_exports.string().max(256),
+  limit: external_exports.number().int().min(1).max(100).optional(),
+  cursor: external_exports.string().max(16e3).optional()
+});
+
 // ../../packages/shared/dist/prompt-resource-contracts.js
 var loreMountSourceSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("manual"), id: external_exports.literal("global").optional() }),
@@ -85016,11 +85039,9 @@ function initializeMvuData(input3) {
   let statData = {};
   const initialized = {};
   let openingOverride = false;
-  for (const opening of input3.opening) {
-    for (const match of opening.matchAll(/<initvar>([\s\S]*?)<\/initvar>/gi)) {
-      statData = correctlyMerge(statData, parseInitial(match[1]));
-      openingOverride = true;
-    }
+  for (const match of input3.opening.matchAll(/<initvar>([\s\S]*?)<\/initvar>/gi)) {
+    statData = correctlyMerge(statData, parseInitial(match[1]));
+    openingOverride = true;
   }
   for (const resource of input3.resources) {
     initialized[resource.id] = [];

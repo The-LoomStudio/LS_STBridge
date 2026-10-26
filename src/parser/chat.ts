@@ -18,12 +18,12 @@ export type SillyTavernChatConversion = {
   metadata?: JsonObject
 }
 
-export function convertSillyTavernChat(source: string | Uint8Array): SillyTavernChatConversion {
+export function convertSillyTavernChat(source: string | Uint8Array, fallbackTitle = 'SillyTavern Chat'): SillyTavernChatConversion {
   const text = typeof source === 'string' ? source : Buffer.from(source).toString('utf8')
   const lines = text.split(/\r?\n/).filter(line => line.trim())
   if (lines.length === 0) throw new Error('SillyTavern chat is empty')
 
-  let title = 'SillyTavern Chat'
+  let title = fallbackTitle
   let metadata: JsonObject | undefined
   const messages: SillyTavernChatConversion['messages'] = []
 

@@ -7,7 +7,7 @@ import { convertSillyTavernLorebook } from './normalizer/lorebook.js'
 import { convertSillyTavernPreset } from './normalizer/preset.js'
 import { convertSillyTavernChat } from './parser/chat.js'
 import type { SillyTavernCard, SillyTavernLorebookData, SillyTavernPresetData } from './types.js'
-import { mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { join, relative, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 import { registerStDataRuntime } from './runtime/register.js'
@@ -21,6 +21,7 @@ type MigrationSession = {
   scanController: AbortController
   scanTask?: Promise<void>
   totalBytes: number
+  preparation?: { paths: string[]; worlds: Map<string, string> }
   counts: { cards: number; chats: number; presets: number; worlds: number; unknown: number }
   scan: { status: 'pending' | 'scanning' | 'completed' | 'failed'; processed: number; total: number; currentPath: string; error?: string }
 }
@@ -37,8 +38,8 @@ function sourceFileName(): string {
 
 function compatibleMigrationKind(path: string): 'card' | 'chat' | 'preset' | 'world' | undefined {
   const lower = path.toLowerCase().replaceAll('\\', '/')
-  if (/(^|\/)characters\/[^/]+\.(png|json)$/.test(lower)) return 'card'
-  if (/(^|\/)chats\/[^/]+\/[^/]+\.jsonl$/.test(lower)) return 'chat'
+  if (/(^|\/)characters\/.+\.(png|json)$/.test(lower)) return 'card'
+  if (/(^|\/)chats\/.+\/[^/]+\.jsonl$/.test(lower)) return 'chat'
   if (/(^|\/)worlds\/[^/]+\.json$/.test(lower)) return 'world'
   if (/(^|\/)openai settings\/[^/]+\.json$/.test(lower)) return 'preset'
   return undefined
@@ -63,14 +64,17 @@ async function scanDirectory(session: MigrationSession, inputDirectory: string, 
       while (queue.length) {
         signal.throwIfAborted()
         const candidate = queue.shift()!
-        const info = await stat(candidate)
-        if (info.isDirectory() && child === 'chats') {
+        const info = await lstat(candidate)
+        if (info.isDirectory() && (child === 'chats' || child === 'characters')) {
           for (const entry of await readdir(candidate, { withFileTypes: true })) queue.push(join(candidate, entry.name))
           continue
         }
         if (!info.isFile()) continue
         const relativePath = relative(scanRoot, candidate).split(sep).join('/')
-        if (compatibleMigrationKind(relativePath)) paths.push(relativePath)
+        if (compatibleMigrationKind(relativePath)) {
+          if (paths.length >= migrationMaxFiles) throw new Error(`Migration exceeds ${migrationMaxFiles} files`)
+          paths.push(relativePath)
+        }
       }
     }
     session.scan.total = paths.length
@@ -160,6 +164,7 @@ export const activate = defineServerExtension({
         if (session) await expireMigrationSession(params.sessionId, session)
         throw new Error('Migration session expired')
       }
+      if (session.preparation) throw new Error('Migration input is already prepared; start a new scan to change files')
       const newPaths = new Set(params.files.flatMap(value => (
         isRecord(value) && typeof value.path === 'string' && !session.files.has(value.path) ? [value.path] : []
       )))
@@ -259,69 +264,70 @@ export const activate = defineServerExtension({
       }
       return { counts: session.counts, files: session.files.size, bytes: session.totalBytes, scan: session.scan } as unknown as JsonValue
     })
-    ctx.rpc.register('sillytavern.importer.migration.commit', async params => {
-      if (!isRecord(params) || typeof params.sessionId !== 'string') throw new Error('migration.commit requires sessionId')
+    // Conversion only: the authenticated Studio import service owns all native writes.
+    ctx.rpc.register('sillytavern.importer.migration.prepare', async params => {
+      if (!isRecord(params) || typeof params.sessionId !== 'string' || typeof params.index !== 'number'
+        || !Number.isSafeInteger(params.index) || params.index < 0) throw new Error('migration.prepare requires sessionId and index')
       const session = migrationSessions.get(params.sessionId)
       if (!session) throw new Error('Migration session not found')
-      if (session.chunks.size > 0) throw new Error('Migration is incomplete: some files are still uploading')
-      const cards = new Map<string, string>()
-      const worlds = new Map<string, string>()
-      let imported = 0
-      for (const [, item] of session.sources) {
-        if (item.kind === 'world') {
-          const source = (await readFile(join(session.stagingDirectory, String(item.source)))).toString('utf8')
-          const artifact = convertSillyTavernLorebook(source as string | SillyTavernLorebookData).artifact
-          const key = semanticFingerprint(artifact.rootNode)
-          if (!worlds.has(key)) {
-            const created = await ctx.rpc.call<{ resource: { id: string } }>('application.importPromptResource', { artifact })
-            worlds.set(key, created.resource.id)
-            imported += 1
-          }
+      if (Date.now() - session.createdAt > migrationSessionTtlMs) {
+        await expireMigrationSession(params.sessionId, session)
+        throw new Error('Migration session expired')
+      }
+      if (session.chunks.size > 0 || session.scanTask && session.scan.status !== 'completed')
+        throw new Error('Migration scan or upload is incomplete')
+      if (!session.preparation) {
+        session.preparation = {
+          paths: ['world', 'card', 'preset', 'chat'].flatMap(kind =>
+            [...session.sources].filter(([, item]) => item.kind === kind).map(([path]) => path)),
+          worlds: new Map(),
         }
       }
-      for (const [path, item] of session.sources) {
+      const path = session.preparation.paths[params.index]
+      if (path === undefined) return null
+      try {
+        const item = session.sources.get(path)!
+        const bytes = await readFile(join(session.stagingDirectory, String(item.source)))
+        if (item.kind === 'world') {
+          const artifact = convertSillyTavernLorebook(bytes.toString('utf8')).artifact
+          const fingerprint = semanticFingerprint(artifact.rootNode)
+          if (session.preparation.worlds.has(fingerprint) && session.preparation.worlds.get(fingerprint) !== path) return { kind: 'skipped', key: path, reason: '相同内容的世界书已在本批次导入' }
+          session.preparation.worlds.set(fingerprint, path)
+          return { kind: 'prompt-resource', key: path, artifact } as unknown as JsonValue
+        }
         if (item.kind === 'card') {
-          const source = await readFile(join(session.stagingDirectory, String(item.source)))
-          const artifact = convertSillyTavernCard(
-            source,
-          ).artifact
-          const sharedIds: string[] = []
-          artifact.contextAssets = artifact.contextAssets.filter(asset => {
-            if (asset.category !== 'lore') return true
-            const key = semanticFingerprint(asset)
-            const worldId = worlds.get(key)
-            if (!worldId) return true
-            sharedIds.push(worldId)
+          const converted = convertSillyTavernCard(bytes)
+          const promptResourceKeys: string[] = []
+          converted.artifact.contextAssets = converted.artifact.contextAssets.filter(asset => {
+            const worldKey = asset.category === 'lore' ? session.preparation!.worlds.get(semanticFingerprint(asset)) : undefined
+            if (!worldKey) return true
+            promptResourceKeys.push(worldKey)
             return false
           })
-          const created = await ctx.rpc.call<{ card: { id: string; promptResourceIds?: string[] } }>('application.importCardBundle', { artifact })
-          if (sharedIds.length) await ctx.rpc.call('application.updateCardPromptResources', {
-            cardId: created.card.id,
-            promptResourceIds: [...new Set([...(created.card.promptResourceIds ?? []), ...sharedIds])],
-            externalPromptResourceIds: sharedIds,
-          })
-          cards.set(characterKeyFromPath(path), created.card.id)
-          imported += 1
-        } else if (item.kind === 'preset') {
-          const source = (await readFile(join(session.stagingDirectory, String(item.source)))).toString('utf8')
-          await ctx.rpc.call('application.importPromptResource', {
-            artifact: convertSillyTavernPreset(JSON.parse(source) as SillyTavernPresetData).artifact,
-          })
-          imported += 1
+          return {
+            kind: 'card', key: path, artifact: converted.artifact, promptResourceKeys,
+            ...(converted.avatarBytes ? { avatarBase64: Buffer.from(converted.avatarBytes).toString('base64') } : {}),
+          } as unknown as JsonValue
         }
-      }
-      for (const [path, item] of session.sources) {
-        if (item.kind !== 'chat') continue
+        if (item.kind === 'preset') return {
+          kind: 'prompt-resource', key: path,
+          artifact: convertSillyTavernPreset(JSON.parse(bytes.toString('utf8')) as SillyTavernPresetData).artifact,
+        } as unknown as JsonValue
         const key = characterKeyFromPath(path)
-        const cardId = cards.get(key)
-        if (!cardId) continue
-        const source = (await readFile(join(session.stagingDirectory, String(item.source)))).toString('utf8')
-        const chat = convertSillyTavernChat(source)
-        await ctx.rpc.call('application.createNarrativeTimeline', { cardId, title: chat.title, openingNodes: chat.messages })
-        imported += 1
+        const cardPaths = [...session.sources].filter(([, source]) => source.kind === 'card').map(([candidate]) => candidate)
+        let matches = cardPaths.filter(candidate => characterKeyFromPath(candidate) === key)
+        if (!matches.length) matches = cardPaths.filter(candidate => characterKeyFromPath(candidate).split('/').at(-1) === key.split('/').at(-1))
+        if (matches.length !== 1) return {
+          kind: 'skipped', key: path,
+          reason: matches.length ? '存在多张同名角色卡，无法确定聊天所属角色' : '没有找到聊天对应的角色卡',
+        }
+        const chat = convertSillyTavernChat(bytes.toString('utf8'), path.split('/').at(-1)!.replace(/\.jsonl$/i, ''))
+        return { kind: 'history', key: path, cardKey: matches[0]!, title: chat.title,
+          messages: chat.messages.map(({ content, createdAt }) => ({ content, ...(createdAt ? { createdAt } : {}) })),
+        } as unknown as JsonValue
+      } catch (error) {
+        throw new Error(`转换 ${path} 失败：${error instanceof Error ? error.message : String(error)}`, { cause: error })
       }
-      await expireMigrationSession(params.sessionId, session)
-      return { imported } as unknown as JsonValue
     })
     ctx.rpc.register('sillytavern.importer.migration.cancel', async params => {
       if (isRecord(params) && typeof params.sessionId === 'string') {
@@ -468,9 +474,10 @@ function decodeMigrationChunk(value: unknown, path: string): number[] | undefine
 }
 
 function characterKeyFromPath(path: string) {
-  const normalized = path.replaceAll('\\', '/')
-  const match = normalized.match(/(?:^|\/)(?:characters|chats)\/([^/]+)/i)
-  return match?.[1]?.replace(/\.(?:png|jsonl?)$/i, '').toLowerCase() ?? ''
+  const normalized = path.replaceAll('\\', '/').toLowerCase()
+  const character = normalized.match(/(?:^|\/)characters\/(.+)\.(?:png|json)$/)
+  if (character) return character[1]!
+  return normalized.match(/(?:^|\/)chats\/(.+)\/[^/]+\.jsonl$/)?.[1] ?? ''
 }
 
 function semanticFingerprint(value: unknown): string {
