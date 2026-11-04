@@ -76,7 +76,6 @@ export function convertSillyTavernCard(source) {
             body: depthExtension.prompt.trim(),
             capabilities: {
                 targetAnchorId: '@chat.session.post',
-                localDepth: typeof depthExtension.depth === 'number' ? depthExtension.depth : 0,
                 activation: { kind: 'always' },
             },
         });
@@ -112,6 +111,8 @@ export function convertSillyTavernCard(source) {
         metadata.stVersion = data.character_version;
     if (data.tags && Array.isArray(data.tags))
         metadata.stTags = data.tags;
+    const regexValue = data.extensions?.regex_scripts ?? data.extensions?.custom_regex_rules
+        ?? data.regex_scripts ?? data.custom_regex_rules;
     const artifact = {
         schemaVersion: 4,
         artifactId,
@@ -131,14 +132,14 @@ export function convertSillyTavernCard(source) {
             } : undefined,
         },
         contextAssets,
-        textTransformRules: convertSillyTavernRegexScripts(data.extensions?.regex_scripts ?? data.extensions?.custom_regex_rules),
+        textTransformRules: convertSillyTavernRegexScripts(regexValue),
         metadata,
     };
     return {
         artifact,
         avatarBytes,
         sourceFormat,
-        diagnostics: diagnoseSillyTavernRegexScripts(data.extensions?.regex_scripts ?? data.extensions?.custom_regex_rules),
+        diagnostics: diagnoseSillyTavernRegexScripts(regexValue),
     };
 }
 //# sourceMappingURL=card.js.map

@@ -82,9 +82,6 @@ export function convertSillyTavernLorebook(
       targetAnchorId = '@lore.lower'
     }
 
-    const depthValue = typeof entry.extensions?.depth === 'number' ? entry.extensions.depth : 4
-    const localDepth = isAtDepth ? (depthValue * 100 + (index + 1)) : (index + 1) * 10
-
     children.push({
       id: `lorebook-node-${entryId}-${randomUUID().slice(0, 6)}`,
       label,
@@ -95,7 +92,6 @@ export function convertSillyTavernLorebook(
       extra: { stUid: entry.uid ?? entry.id ?? entryId },
       capabilities: {
         targetAnchorId,
-        localDepth,
         roleHint: 'system',
         activation,
         lifecycle: { lifecycle },
@@ -105,7 +101,7 @@ export function convertSillyTavernLorebook(
 
   const artifact: PromptResourceArtifact = {
     format: 'loom.promptResource',
-    schemaVersion: 1,
+    schemaVersion: 2,
     resourceKind: 'lore',
     rootNode: {
       id: rootId,

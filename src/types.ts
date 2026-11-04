@@ -87,7 +87,7 @@ export type SillyTavernLorebookData = {
 export type SillyTavernPresetPrompt = {
   identifier?: string
   name?: string
-  role?: 'system' | 'user' | 'assistant'
+  role?: 'system' | 'developer' | 'user' | 'assistant'
   content?: string
   system_prompt?: boolean
   marker?: boolean
@@ -109,6 +109,8 @@ export type SillyTavernPresetOrderGroup = {
 }
 
 export type SillyTavernPresetData = {
+  regex_scripts?: SillyTavernRegexScript[]
+  custom_regex_rules?: SillyTavernRegexScript[]
   prompts?: SillyTavernPresetPrompt[]
   prompt_order?: SillyTavernPresetOrderGroup[]
   temperature?: number

@@ -11,13 +11,21 @@ Loom Studio 的 SillyTavern 数据兼容扩展。
 - 角色卡内嵌世界书会抽取为可共享资源，再以外部引用挂回角色，避免卡片与外部 worlds 文件重复创建；
 - 为后续会话导入、Text Pipeline 正则兼容和远程更新提供独立发布单元。
 
+## 原生资源合同
+
+- 新转换的 Preset / Lore 使用 `loom.promptResource` v2。作者排序只保存在树中，不再输出 `localDepth`；Lore 根据 ST 的 order / insertion_order 排列后按目标锚点保序注入，不把 ST 的绝对消息深度伪装为原生节点深度。
+- Preset 普通正文是 Message 内的原位 Entry，不再自挂到 `@preset.system` / `@chat.session.post`。只有外部贡献与真正的虚拟锚点声明目标；Marker 的禁用状态保留，先识别完整编排后再补缺失锚点，避免重复注入。原生 Session 锚点保持在 Message 外。
+- 角色附带的 post-history / depth_prompt 属于外部角色贡献，仍指向 `@chat.session.post`；这与预设自身的原位正文不同。
+- 正则兼容输出仍使用正式 Artifact 的 `textTransformRules` 导入字段，由宿主事务转换为 `.rule.md` 和对应采用记录，不创建旧 Rule Document。角色和预设均支持 extensions 与旧顶层的 regex_scripts / custom_regex_rules，extensions 优先。
+- 字面量 trimStrings 映射为 captureRemove，清理替换结果中的捕获内容，Prompt / Display 阶段与禁用状态经导入保留。含 ST 宏的 trimStrings 与 runOnEdit 仍报告为不支持；不执行作者后台脚本来补齐这些行为。
+
 ## EJS / MVU 数据兼容
 
 新导入的 MVU 卡显式采用 `sillytavern.importer.mvu` State Contribution。完整数据存放在
 `/mvu`，保留 `stat_data`、动态 `schema`、
 `initialized_lorebooks` 与更新后的显示/增量字段；不再把正文消息作为变量的权威存储。
 
-- 已有 Timeline 继续在原 `/entities/stCompatibility/mvu/components/data` 地址读写与回滚，不自动改写历史。
+- 当前 Timeline 的 MVU 读取、更新与回滚只使用 `/mvu`；旧 `/entities/stCompatibility/mvu/components/data` 双读已移除，不自动改写历史数据。
 - 初始化读取所选开场和关联世界书，包括 Prompt 已禁用的 `[initvar]` 条目。开场 `<initvar>` 替代主角色世界书初值；其他世界书继续合并。已有 Timeline 不因资源编辑或重载扩展重新初始化。
 - EJS 使用 `ejs` 3.1.10，在 QuickJS 0.32.0 内编译、渲染；提供 `_`、`print`、异步模板、最新 `getvar` / `getVariable`、`getVariables` / `Mvu.getMvuData`。最新楼层可省略或使用 `latest` / `-1`，这些兼容函数仅存在于 Prompt guest。
 - `{{get_message_variable::路径}}` 在 EJS 求值后读取当前 MVU 数据，不把变量内容再次编译成模板。
@@ -61,3 +69,15 @@ Git 安装不会执行构建。修改源码后，将重新构建的完整 `dist/
 不复制 ST 存储、界面通知和作者事件宿主。`scripts/probe-upstream.mjs` 对本地上游示例卡运行内存数据库探针，
 使用固定模型回复而不请求真实模型。当前数据链与恢复测试位于主仓库 `tests/unit/st-data-compat/`、
 `tests/integration/application-runtime/st-data-compat.test.ts`。
+
+
+## 扩展自有测试
+
+本仓库的 `tests/unit`、`tests/integration`、`tests/host` 拥有 ST 转换、EJS/MVU、真实 Worker、导入与宿主兼容性测试。在 LoomStudio checkout 的 `extensions/st-data-compat` 下开发：
+
+```sh
+pnpm --filter @loom-studio/sillytavern-importer test
+pnpm --filter @loom-studio/sillytavern-importer test:typecheck
+```
+
+测试命令先构建真实 Worker；无测试会失败。`vitest.config.ts` 使用宿主 `tests/support/extension-vitest-config.ts` 复用包别名和环境，部分集成用例使用宿主 Runtime/Server 内部测试入口，因此这是明确绑定 checkout 的兼容性测试，不是稳定公开 SDK。主应用 CI 不依赖本仓库。独立 CI 检出宿主及本扩展后执行；手动执行可通过 host_ref 指定兼容版本。宿主须已包含该测试辅助入口。

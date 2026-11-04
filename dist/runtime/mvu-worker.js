@@ -6983,7 +6983,7 @@ var require_stringify = __commonJS({
         props.push(doc.directives.tagString(tag2));
       return props.join(" ");
     }
-    function stringify3(item, ctx, onComment, onChompKeep) {
+    function stringify4(item, ctx, onComment, onChompKeep) {
       if (identity2.isPair(item))
         return item.toString(ctx, onComment, onChompKeep);
       if (identity2.isAlias(item)) {
@@ -7012,7 +7012,7 @@ var require_stringify = __commonJS({
 ${ctx.indent}${str}`;
     }
     exports.createStringifyContext = createStringifyContext;
-    exports.stringify = stringify3;
+    exports.stringify = stringify4;
   }
 });
 
@@ -7022,7 +7022,7 @@ var require_stringifyPair = __commonJS({
     "use strict";
     var identity2 = require_identity();
     var Scalar = require_Scalar();
-    var stringify3 = require_stringify();
+    var stringify4 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
       const { allNullValues, doc, indent, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
@@ -7044,7 +7044,7 @@ var require_stringifyPair = __commonJS({
       });
       let keyCommentDone = false;
       let chompKeep = false;
-      let str = stringify3.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
+      let str = stringify4.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
       if (!explicitKey && !ctx.inFlow && str.length > 1024) {
         if (simpleKeys)
           throw new Error("With simple keys, single line scalar must not span more than 1024 characters");
@@ -7096,7 +7096,7 @@ ${indent}:`;
         ctx.indent = ctx.indent.substring(2);
       }
       let valueCommentDone = false;
-      const valueStr = stringify3.stringify(value, ctx, () => valueCommentDone = true, () => chompKeep = true);
+      const valueStr = stringify4.stringify(value, ctx, () => valueCommentDone = true, () => chompKeep = true);
       let ws = " ";
       if (keyComment || vsb || vcb) {
         ws = vsb ? "\n" : "";
@@ -7237,7 +7237,7 @@ var require_addPairToJSMap = __commonJS({
     "use strict";
     var log4 = require_log();
     var merge2 = require_merge();
-    var stringify3 = require_stringify();
+    var stringify4 = require_stringify();
     var identity2 = require_identity();
     var toJS = require_toJS();
     function addPairToJSMap(ctx, map4, { key, value }) {
@@ -7273,7 +7273,7 @@ var require_addPairToJSMap = __commonJS({
       if (typeof jsKey !== "object")
         return String(jsKey);
       if (identity2.isNode(key) && ctx?.doc) {
-        const strCtx = stringify3.createStringifyContext(ctx.doc, {});
+        const strCtx = stringify4.createStringifyContext(ctx.doc, {});
         strCtx.anchors = /* @__PURE__ */ new Set();
         for (const node2 of ctx.anchors.keys())
           strCtx.anchors.add(node2.anchor);
@@ -7340,12 +7340,12 @@ var require_stringifyCollection = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/stringify/stringifyCollection.js"(exports) {
     "use strict";
     var identity2 = require_identity();
-    var stringify3 = require_stringify();
+    var stringify4 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyCollection(collection, ctx, options) {
       const flow = ctx.inFlow ?? collection.flow;
-      const stringify4 = flow ? stringifyFlowCollection : stringifyBlockCollection;
-      return stringify4(collection, ctx, options);
+      const stringify5 = flow ? stringifyFlowCollection : stringifyBlockCollection;
+      return stringify5(collection, ctx, options);
     }
     function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, flowChars, itemIndent, onChompKeep, onComment }) {
       const { indent, options: { commentString } } = ctx;
@@ -7370,7 +7370,7 @@ var require_stringifyCollection = __commonJS({
           }
         }
         chompKeep = false;
-        let str2 = stringify3.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
+        let str2 = stringify4.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
         if (comment2)
           str2 += stringifyComment.lineComment(str2, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
@@ -7437,7 +7437,7 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           reqNewline = true;
-        let str = stringify3.stringify(item, itemCtx, () => comment = null);
+        let str = stringify4.stringify(item, itemCtx, () => comment = null);
         reqNewline || (reqNewline = lines.length > linesAtValue || str.includes("\n"));
         if (i2 < items.length - 1) {
           str += ",";
@@ -8798,7 +8798,7 @@ var require_stringifyDocument = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/stringify/stringifyDocument.js"(exports) {
     "use strict";
     var identity2 = require_identity();
-    var stringify3 = require_stringify();
+    var stringify4 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyDocument(doc, options) {
       const lines = [];
@@ -8813,7 +8813,7 @@ var require_stringifyDocument = __commonJS({
       }
       if (hasDirectives)
         lines.push("---");
-      const ctx = stringify3.createStringifyContext(doc, options);
+      const ctx = stringify4.createStringifyContext(doc, options);
       const { commentString } = ctx.options;
       if (doc.commentBefore) {
         if (lines.length !== 1)
@@ -8835,7 +8835,7 @@ var require_stringifyDocument = __commonJS({
           contentComment = doc.contents.comment;
         }
         const onChompKeep = contentComment ? void 0 : () => chompKeep = true;
-        let body = stringify3.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
+        let body = stringify4.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
         if (contentComment)
           body += stringifyComment.lineComment(body, "", commentString(contentComment));
         if ((body[0] === "|" || body[0] === ">") && lines[lines.length - 1] === "---") {
@@ -8843,7 +8843,7 @@ var require_stringifyDocument = __commonJS({
         } else
           lines.push(body);
       } else {
-        lines.push(stringify3.stringify(doc.contents, ctx));
+        lines.push(stringify4.stringify(doc.contents, ctx));
       }
       if (doc.directives?.docEnd) {
         if (doc.comment) {
@@ -10978,7 +10978,7 @@ var require_cst_scalar = __commonJS({
 var require_cst_stringify = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/parse/cst-stringify.js"(exports) {
     "use strict";
-    var stringify3 = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
+    var stringify4 = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
     function stringifyToken(token) {
       switch (token.type) {
         case "block-scalar": {
@@ -11031,7 +11031,7 @@ var require_cst_stringify = __commonJS({
         res += stringifyToken(value);
       return res;
     }
-    exports.stringify = stringify3;
+    exports.stringify = stringify4;
   }
 });
 
@@ -12723,7 +12723,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument2(source, options = {}) {
+    function parseDocument3(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser2.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -12749,7 +12749,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver2 && typeof reviver2 === "object") {
         options = reviver2;
       }
-      const doc = parseDocument2(src, options);
+      const doc = parseDocument3(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning) => log4.warn(doc.options.logLevel, warning));
@@ -12761,7 +12761,7 @@ var require_public_api = __commonJS({
       }
       return doc.toJS(Object.assign({ reviver: _reviver }, options));
     }
-    function stringify3(value, replacer2, options) {
+    function stringify4(value, replacer2, options) {
       let _replacer = null;
       if (typeof replacer2 === "function" || Array.isArray(replacer2)) {
         _replacer = replacer2;
@@ -12785,8 +12785,8 @@ var require_public_api = __commonJS({
     }
     exports.parse = parse6;
     exports.parseAllDocuments = parseAllDocuments;
-    exports.parseDocument = parseDocument2;
-    exports.stringify = stringify3;
+    exports.parseDocument = parseDocument3;
+    exports.stringify = stringify4;
   }
 });
 
@@ -13726,7 +13726,7 @@ var require_parse = __commonJS({
 var require_stringify2 = __commonJS({
   "../../node_modules/.pnpm/json5@2.2.3/node_modules/json5/lib/stringify.js"(exports, module) {
     var util = require_util();
-    module.exports = function stringify3(value, replacer2, space) {
+    module.exports = function stringify4(value, replacer2, space) {
       const stack = [];
       let indent = "";
       let propertyList;
@@ -13945,10 +13945,10 @@ var require_stringify2 = __commonJS({
 var require_lib = __commonJS({
   "../../node_modules/.pnpm/json5@2.2.3/node_modules/json5/lib/index.js"(exports, module) {
     var parse6 = require_parse();
-    var stringify3 = require_stringify2();
+    var stringify4 = require_stringify2();
     var JSON53 = {
       parse: parse6,
-      stringify: stringify3
+      stringify: stringify4
     };
     module.exports = JSON53;
   }
@@ -35623,6 +35623,22 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
+// ../../packages/shared/dist/chat-attachments.js
+var chatAttachmentSchema = external_exports.strictObject({
+  assetId: external_exports.string().min(1).max(255),
+  name: external_exports.string().min(1).max(1024),
+  mediaType: external_exports.string().min(1).max(255),
+  sizeBytes: external_exports.number().int().nonnegative(),
+  kind: external_exports.enum(["image", "text"])
+});
+
+// ../../packages/shared/dist/player-state.js
+var playerEntityType = { id: "loom-player", collectionPath: "$loom.players", label: "\u73A9\u5BB6" };
+var playerEntity = { typeId: playerEntityType.id, entityId: "User" };
+var playerProfileComponentKey = "loom_profile";
+var playerEntityPath = `${playerEntityType.collectionPath}.${playerEntity.entityId}`;
+var playerProfilePath = `${playerEntityPath}.components.${playerProfileComponentKey}`;
+
 // ../../packages/shared/dist/global-search.js
 var globalSearchKindSchema = external_exports.enum(["card", "lore", "preset", "timeline", "session"]);
 var globalSearchScopeSchema = external_exports.object({
@@ -35647,6 +35663,57 @@ var listGlobalSearchScopesInputSchema = external_exports.object({
 });
 
 // ../../packages/shared/dist/prompt-resource-contracts.js
+function stripPromptAuthorDepth(capabilities) {
+  if (!capabilities || typeof capabilities !== "object" || Array.isArray(capabilities) || !Object.hasOwn(capabilities, "localDepth"))
+    return capabilities;
+  const { localDepth: _depth, ...rest } = capabilities;
+  return rest;
+}
+function promptAnchorOutput(anchorId) {
+  return anchorId === "@chat.session" ? "messages" : "text";
+}
+function isPromptMessageSequence(node2) {
+  return node2.kind === "virtual" && promptAnchorOutput(node2.capabilities?.targetAnchorId ?? node2.id) === "messages";
+}
+function canPlacePromptNode(root, parentId, child) {
+  function path(node2) {
+    if (node2.id === parentId)
+      return [node2];
+    for (const item of node2.children ?? []) {
+      const found = path(item);
+      if (found)
+        return [node2, ...found];
+    }
+  }
+  const parents = path(root);
+  if (!parents || !["module", "folder", "message"].includes(parents.at(-1).kind))
+    return false;
+  function valid(node2, insideMessage) {
+    if (isPromptMessageSequence(node2))
+      return !insideMessage && !node2.children?.length;
+    if (node2.kind === "message" && insideMessage)
+      return false;
+    if (!["module", "folder", "message"].includes(node2.kind) && node2.children?.length)
+      return false;
+    return (node2.children ?? []).every((item) => valid(item, insideMessage || node2.kind === "message"));
+  }
+  const incomingIds = /* @__PURE__ */ new Set();
+  let incomingSequences = 0;
+  function inspect(node2) {
+    incomingIds.add(node2.id);
+    if (isPromptMessageSequence(node2))
+      incomingSequences++;
+    for (const item of node2.children ?? [])
+      inspect(item);
+  }
+  inspect(child);
+  function hasOtherSequence(node2) {
+    return !incomingIds.has(node2.id) && isPromptMessageSequence(node2) || (node2.children ?? []).some(hasOtherSequence);
+  }
+  if (incomingSequences > 1 || incomingSequences === 1 && hasOtherSequence(root))
+    return false;
+  return valid(child, parents.some((node2) => node2.kind === "message"));
+}
 var loreMountSourceSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("manual"), id: external_exports.literal("global").optional() }),
   external_exports.object({ kind: external_exports.literal("preset"), id: external_exports.string() })
@@ -35675,6 +35742,7 @@ var listLoreMountsResultSchema = external_exports.object({
   mounts: external_exports.array(loreMountSchema)
 });
 var replaceLoreMountsInputSchema = external_exports.object({
+  expectedMountIds: external_exports.array(external_exports.string().min(1)),
   source: loreMountSourceSchema,
   loreResourceIds: external_exports.array(external_exports.string()).optional(),
   mounts: external_exports.array(external_exports.union([
@@ -35687,6 +35755,210 @@ var replaceLoreMountsInputSchema = external_exports.object({
 var replaceLoreMountsResultSchema = external_exports.object({
   mounts: external_exports.array(loreMountSchema),
   mutation: external_exports.object({ changesetId: external_exports.string() })
+});
+var promptResourceDisplayMetadataSchema = external_exports.object({
+  icon: external_exports.object({
+    kind: external_exports.literal("package"),
+    packageId: external_exports.string().regex(/^[A-Za-z0-9._-]+$/),
+    path: external_exports.string().min(1).refine((path) => !path.startsWith("/") && !path.includes("\\") && !path.includes(":") && path.split("/").every((part) => part !== ".." && part !== "." && part !== ""), "Expected a package-relative file path"),
+    scope: external_exports.enum(["global", "card"]).optional(),
+    target: external_exports.discriminatedUnion("kind", [
+      external_exports.object({ kind: external_exports.literal("global") }),
+      external_exports.object({ kind: external_exports.literal("card"), cardId: external_exports.string().min(1) })
+    ]).optional()
+  }).strict().optional()
+}).strict();
+
+// ../../packages/shared/dist/tool-mount-contracts.js
+var toolContentPlacementSchema = external_exports.strictObject({
+  targetAnchorId: external_exports.string().trim().min(1).refine((id) => promptAnchorOutput(id) === "text", "Tool descriptions require a text anchor").optional(),
+  localDepth: external_exports.number().finite().optional()
+});
+var presetToolMountInputSchema = external_exports.strictObject({
+  toolId: external_exports.string().min(1),
+  orderIndex: external_exports.number().int().nonnegative(),
+  defaultEnabled: external_exports.boolean(),
+  // Runtime owns semantic validation of activation expressions.
+  activation: external_exports.record(external_exports.string(), external_exports.json()).optional(),
+  provider: external_exports.strictObject({ order: external_exports.number().finite().optional() }).optional(),
+  content: toolContentPlacementSchema.optional()
+});
+var presetToolMountSchema = presetToolMountInputSchema.extend({
+  id: external_exports.string(),
+  presetResourceId: external_exports.string(),
+  origin: external_exports.record(external_exports.string(), external_exports.json()),
+  createdAt: external_exports.string()
+});
+var listPresetToolMountsInputSchema = external_exports.strictObject({
+  presetId: external_exports.string().optional(),
+  toolId: external_exports.string().optional()
+});
+var listPresetToolMountsResultSchema = external_exports.object({ mounts: external_exports.array(presetToolMountSchema) });
+var replacePresetToolMountsInputSchema = external_exports.strictObject({
+  expectedMountIds: external_exports.array(external_exports.string().min(1)),
+  presetId: external_exports.string().min(1),
+  mounts: external_exports.array(presetToolMountInputSchema)
+});
+var replacePresetToolMountsResultSchema = listPresetToolMountsResultSchema.extend({
+  mutation: external_exports.object({ changesetId: external_exports.string() })
+});
+var toolReferenceSchema = external_exports.discriminatedUnion("kind", [
+  external_exports.strictObject({ kind: external_exports.literal("host"), toolId: external_exports.string().trim().min(1) }),
+  external_exports.strictObject({ kind: external_exports.literal("package"), contributionId: external_exports.string().trim().min(1) }),
+  external_exports.strictObject({ kind: external_exports.literal("external"), packageId: external_exports.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/), contributionId: external_exports.string().trim().min(1), target: external_exports.enum(["global", "card"]) })
+]);
+var extensionToolMountSchema = external_exports.strictObject({
+  toolId: external_exports.string().trim().min(1).optional(),
+  reference: toolReferenceSchema.optional(),
+  orderIndex: external_exports.number().int().nonnegative().optional(),
+  defaultEnabled: external_exports.boolean().optional(),
+  activation: external_exports.record(external_exports.string(), external_exports.json()).optional(),
+  provider: external_exports.strictObject({ order: external_exports.number().finite().optional() }).optional(),
+  content: toolContentPlacementSchema.optional()
+}).refine((value) => value.toolId === void 0 !== (value.reference === void 0), "Specify exactly one toolId or reference");
+var authoringToolMountSchema = extensionToolMountSchema.safeExtend({
+  orderIndex: external_exports.number().int().nonnegative(),
+  defaultEnabled: external_exports.boolean()
+});
+
+// ../../packages/shared/dist/resource-authoring-contracts.js
+var authoringNodeSchema = external_exports.lazy(() => external_exports.strictObject({
+  id: external_exports.string().min(1),
+  kind: external_exports.enum(["module", "folder", "entry", "virtual", "message"]),
+  label: external_exports.string(),
+  category: external_exports.string().optional(),
+  meta: external_exports.string().refine((value) => value !== "message.developer", "Unsupported Prompt message role").optional(),
+  enabled: external_exports.boolean().optional(),
+  body: external_exports.string().optional(),
+  capabilities: external_exports.object({ roleHint: external_exports.enum(["system", "user", "assistant"]).optional(), targetAnchorId: external_exports.string().optional() }).catchall(external_exports.json()).transform(stripPromptAuthorDepth).optional(),
+  extra: external_exports.record(external_exports.string(), external_exports.json()).optional(),
+  children: external_exports.array(authoringNodeSchema).optional()
+}));
+var authoringResourceSchema = external_exports.strictObject({
+  format: external_exports.literal("loom.resource.authoring"),
+  schemaVersion: external_exports.literal(1),
+  id: external_exports.string().min(1),
+  resourceKind: external_exports.enum(["preset", "lore"]),
+  rootNode: authoringNodeSchema,
+  metadata: external_exports.strictObject({ icon: promptResourceDisplayMetadataSchema.shape.icon.unwrap().omit({ target: true }).optional() }).optional(),
+  macros: external_exports.record(external_exports.string(), external_exports.string()).optional(),
+  macroOptions: external_exports.record(external_exports.string(), external_exports.array(external_exports.strictObject({ id: external_exports.string(), label: external_exports.string(), value: external_exports.string() }))).optional(),
+  useCardLore: external_exports.boolean().optional(),
+  useGlobalLore: external_exports.boolean().optional(),
+  useCardText: external_exports.boolean().optional(),
+  useGlobalText: external_exports.boolean().optional(),
+  loreMounts: external_exports.array(loreMountSchema.shape.reference.unwrap()).optional(),
+  toolMounts: external_exports.array(authoringToolMountSchema).optional()
+}).superRefine((resource, ctx) => {
+  const ids = /* @__PURE__ */ new Set();
+  const walk = (node2, depth) => {
+    if (depth > 128) {
+      ctx.addIssue({ code: "custom", message: "Tree exceeds 128 levels" });
+      return;
+    }
+    if (ids.has(node2.id))
+      ctx.addIssue({ code: "custom", message: `Duplicate node ID: ${node2.id}` });
+    ids.add(node2.id);
+    for (const child of node2.children ?? []) {
+      if (!canPlacePromptNode(resource.rootNode, node2.id, child))
+        ctx.addIssue({ code: "custom", message: `Invalid child placement: ${child.id}` });
+      walk(child, depth + 1);
+    }
+  };
+  if (resource.rootNode.kind !== "module")
+    ctx.addIssue({ code: "custom", message: "Root must be a module" });
+  walk(resource.rootNode, 0);
+});
+var authoringApplySchema = external_exports.strictObject({
+  resources: external_exports.array(external_exports.strictObject({ resource: authoringResourceSchema, expectedVersion: external_exports.number().int().positive().optional(), expectedDigest: external_exports.string().optional(), create: external_exports.boolean().optional() })).min(1)
+});
+var authoringStateSchema = external_exports.strictObject({
+  schemaVersion: external_exports.literal(1),
+  endpoint: external_exports.string().url(),
+  resources: external_exports.array(external_exports.strictObject({ directory: external_exports.string(), resourceId: external_exports.string(), version: external_exports.number().int().positive(), digest: external_exports.string(), contributionId: external_exports.string().optional() }))
+});
+
+// ../../packages/shared/dist/loom-script-metadata.js
+var import_yaml = __toESM(require_dist(), 1);
+var loomScriptRuntimeSchema = external_exports.enum(["declarative", "client-sandbox", "client", "client-worker", "server"]);
+var loomScriptSettingsSchema = external_exports.record(external_exports.string(), external_exports.union([external_exports.string(), external_exports.number().finite(), external_exports.boolean()]));
+var identifier = external_exports.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/);
+var settingSchema = external_exports.strictObject({
+  key: identifier,
+  label: external_exports.string().trim().min(1),
+  description: external_exports.string().optional(),
+  type: external_exports.enum(["string", "number", "boolean", "select"]),
+  default: external_exports.union([external_exports.string(), external_exports.number().finite(), external_exports.boolean()]),
+  min: external_exports.number().finite().optional(),
+  max: external_exports.number().finite().optional(),
+  options: external_exports.array(external_exports.strictObject({ label: external_exports.string().min(1), value: external_exports.string() })).min(1).optional()
+});
+var loreReferenceSchema = external_exports.strictObject({ resourceId: external_exports.string().trim().min(1), nodeId: external_exports.string().trim().min(1) });
+var matcherSchema = external_exports.strictObject({ kind: external_exports.literal("regex"), pattern: external_exports.string(), flags: external_exports.string() });
+var scriptTextTransformRuleSchema = external_exports.strictObject({
+  name: external_exports.string().trim().min(1),
+  enabled: external_exports.boolean(),
+  orderIndex: external_exports.number().int(),
+  matcher: matcherSchema,
+  loreRefs: external_exports.array(loreReferenceSchema).optional(),
+  description: external_exports.string().optional(),
+  descriptionAnchor: external_exports.string().trim().min(1).optional(),
+  captureRemove: external_exports.array(external_exports.string()).optional(),
+  streaming: external_exports.boolean().optional(),
+  effect: external_exports.discriminatedUnion("kind", [
+    external_exports.strictObject({ kind: external_exports.literal("replace"), replacement: external_exports.string() }),
+    external_exports.strictObject({ kind: external_exports.literal("mark"), markerType: external_exports.string().optional() }),
+    external_exports.strictObject({ kind: external_exports.literal("promote-reasoning"), contentGroup: external_exports.union([external_exports.number().int().nonnegative(), external_exports.string()]).optional(), visibility: external_exports.enum(["collapsed", "hidden", "visible"]), replay: external_exports.enum(["omit", "assistant-content"]), dialect: external_exports.string().optional() })
+  ]),
+  targets: external_exports.array(external_exports.enum(["narrative", "agent-session"])).min(1),
+  phases: external_exports.array(external_exports.enum(["classify", "prompt", "display"])).min(1),
+  range: external_exports.strictObject({ minDepth: external_exports.number().int().nonnegative().optional(), maxDepth: external_exports.number().int().nonnegative().optional() }).optional()
+});
+var textRuleUsageSchema = external_exports.strictObject({
+  minDepth: external_exports.number().int().nonnegative().nullable().optional(),
+  maxDepth: external_exports.number().int().nonnegative().nullable().optional(),
+  targets: scriptTextTransformRuleSchema.shape.targets.optional(),
+  phases: scriptTextTransformRuleSchema.shape.phases.optional(),
+  streaming: external_exports.boolean().optional()
+});
+var textRuleUsagesSchema = external_exports.record(external_exports.string(), textRuleUsageSchema);
+var scriptTextExtractorSchema = external_exports.strictObject({
+  name: external_exports.string().trim().min(1),
+  enabled: external_exports.boolean(),
+  orderIndex: external_exports.number().int(),
+  targets: external_exports.array(external_exports.enum(["narrative", "agent-session"])).min(1),
+  matcher: matcherSchema.extend({ contentGroup: external_exports.union([external_exports.number().int().nonnegative(), external_exports.string()]).optional() }),
+  strategy: external_exports.enum(["latest-valid", "all-matches"]),
+  parser: external_exports.enum(["text", "key-value-lines"]),
+  artifactType: external_exports.string().min(1).optional(),
+  outputSchema: external_exports.record(external_exports.string(), external_exports.json()).optional()
+});
+var markdownRuleHeader = external_exports.strictObject({
+  format: external_exports.literal(1).optional(),
+  id: identifier,
+  name: external_exports.string().trim().min(1).regex(/^[^\r\n]+$/),
+  version: external_exports.string().default("1.0.0"),
+  tags: external_exports.array(external_exports.string().regex(/^[^\r\n]+$/)).default([]),
+  regex: external_exports.union([external_exports.string(), external_exports.strictObject({ $config: external_exports.string(), as: external_exports.enum(["literal", "raw"]).optional() })]),
+  description: external_exports.string().optional(),
+  description_anchor: external_exports.string().trim().min(1).optional(),
+  regex_flags: external_exports.string().default("g"),
+  enabled: external_exports.boolean().default(true),
+  order: external_exports.number().int().default(0),
+  phases: external_exports.array(external_exports.enum(["display", "prompt", "classify"])).min(1).default(["display"]),
+  targets: external_exports.array(external_exports.enum(["narrative", "agent-session"])).min(1).default(["narrative", "agent-session"]),
+  capture_remove: external_exports.array(external_exports.string()).default([]),
+  streaming: external_exports.boolean().default(false),
+  lore_refs: external_exports.array(loreReferenceSchema).optional(),
+  min_depth: external_exports.number().int().nonnegative().optional(),
+  max_depth: external_exports.number().int().nonnegative().optional(),
+  action: external_exports.enum(["replace", "mark", "promote-reasoning"]).default("replace"),
+  marker_type: external_exports.string().optional(),
+  dialect: external_exports.string().optional(),
+  content_group: external_exports.union([external_exports.number().int().nonnegative(), external_exports.string()]).optional(),
+  visibility: external_exports.enum(["collapsed", "hidden", "visible"]).default("collapsed"),
+  replay: external_exports.enum(["omit", "assistant-content"]).default("omit"),
+  settings: external_exports.array(settingSchema).default([])
 });
 
 // ../../packages/shared/dist/index.js
@@ -43306,7 +43578,7 @@ function _format(value, options) {
     return formatArray(value, options);
   }
   if (isString(value)) {
-    return stringify2(value);
+    return stringify3(value);
   }
   if (typeof value === "function") {
     return value.syntax ? String(value.syntax) : "function";
@@ -43318,14 +43590,14 @@ function _format(value, options) {
       return value.toString(options);
     } else {
       var entries = Object.keys(value).map((key) => {
-        return stringify2(key) + ": " + format3(value[key], options);
+        return stringify3(key) + ": " + format3(value[key], options);
       });
       return "{" + entries.join(", ") + "}";
     }
   }
   return String(value);
 }
-function stringify2(value) {
+function stringify3(value) {
   var text = String(value);
   var escaped = "";
   var i2 = 0;
@@ -61175,15 +61447,15 @@ function getPrecedence(_node, parenthesis, implicit, parent) {
   if (parenthesis !== "keep") {
     node2 = _node.getContent();
   }
-  var identifier = node2.getIdentifier();
+  var identifier2 = node2.getIdentifier();
   var precedence = null;
   for (var i2 = 0; i2 < properties.length; i2++) {
-    if (identifier in properties[i2]) {
+    if (identifier2 in properties[i2]) {
       precedence = i2;
       break;
     }
   }
-  if (identifier === "OperatorNode:multiply" && node2.implicit && implicit !== "show") {
+  if (identifier2 === "OperatorNode:multiply" && node2.implicit && implicit !== "show") {
     var leftArg = unwrapParen(node2.args[0], parenthesis);
     if (!(isConstantNode(leftArg) && parent && parent.getIdentifier() === "OperatorNode:divide" && rule2Node(unwrapParen(parent.args[0], parenthesis))) && !(leftArg.getIdentifier() === "OperatorNode:divide" && rule2Node(unwrapParen(leftArg.args[0], parenthesis)) && isConstantNode(unwrapParen(leftArg.args[1])))) {
       precedence += 1;
@@ -61196,12 +61468,12 @@ function getAssociativity(_node, parenthesis) {
   if (parenthesis !== "keep") {
     node2 = _node.getContent();
   }
-  var identifier = node2.getIdentifier();
+  var identifier2 = node2.getIdentifier();
   var index2 = getPrecedence(node2, parenthesis);
   if (index2 === null) {
     return null;
   }
-  var property = properties[index2][identifier];
+  var property = properties[index2][identifier2];
   if (hasOwnProperty(property, "associativity")) {
     if (property.associativity === "left") {
       return "left";
@@ -61209,7 +61481,7 @@ function getAssociativity(_node, parenthesis) {
     if (property.associativity === "right") {
       return "right";
     }
-    throw Error("'" + identifier + "' has the invalid associativity '" + property.associativity + "'.");
+    throw Error("'" + identifier2 + "' has the invalid associativity '" + property.associativity + "'.");
   }
   return null;
 }
@@ -61234,10 +61506,10 @@ function isAssociativeWith(nodeA, nodeB, parenthesis) {
   return null;
 }
 function getOperator(fn) {
-  var identifier = "OperatorNode:" + fn;
+  var identifier2 = "OperatorNode:" + fn;
   for (var group of properties) {
-    if (identifier in group) {
-      return group[identifier].op;
+    if (identifier2 in group) {
+      return group[identifier2].op;
     }
   }
   return null;
@@ -62977,7 +63249,7 @@ var createObjectNode = /* @__PURE__ */ factory(name215, dependencies215, (_ref) 
       var evalEntries = {};
       for (var key in this.properties) {
         if (hasOwnProperty(this.properties, key)) {
-          var stringifiedKey = stringify2(key);
+          var stringifiedKey = stringify3(key);
           var parsedKey = JSON.parse(stringifiedKey);
           var prop = getSafeProperty(this.properties, key);
           evalEntries[parsedKey] = prop._compile(math2, argNames);
@@ -63000,7 +63272,7 @@ var createObjectNode = /* @__PURE__ */ factory(name215, dependencies215, (_ref) 
     forEach(callback) {
       for (var key in this.properties) {
         if (hasOwnProperty(this.properties, key)) {
-          callback(this.properties[key], "properties[" + stringify2(key) + "]", this);
+          callback(this.properties[key], "properties[" + stringify3(key) + "]", this);
         }
       }
     }
@@ -63014,7 +63286,7 @@ var createObjectNode = /* @__PURE__ */ factory(name215, dependencies215, (_ref) 
       var properties2 = {};
       for (var key in this.properties) {
         if (hasOwnProperty(this.properties, key)) {
-          properties2[key] = this._ifNode(callback(this.properties[key], "properties[" + stringify2(key) + "]", this));
+          properties2[key] = this._ifNode(callback(this.properties[key], "properties[" + stringify3(key) + "]", this));
         }
       }
       return new ObjectNode2(properties2);
@@ -63042,7 +63314,7 @@ var createObjectNode = /* @__PURE__ */ factory(name215, dependencies215, (_ref) 
       var entries = [];
       for (var key in this.properties) {
         if (hasOwnProperty(this.properties, key)) {
-          entries.push(stringify2(key) + ": " + this.properties[key].toString(options));
+          entries.push(stringify3(key) + ": " + this.properties[key].toString(options));
         }
       }
       return "{" + entries.join(", ") + "}";

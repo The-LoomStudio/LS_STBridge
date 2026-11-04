@@ -1804,7 +1804,6 @@ async function newQuickJSWASMModule(variantOrPromise = src_default) {
 var ejsProcessorId = "sillytavern.importer/ejs";
 var mvuContributionId = "sillytavern.importer.mvu";
 var mvuComponentPath = "/mvu";
-var legacyMvuComponentPath = "/entities/stCompatibility/mvu/components/data";
 
 // src/runtime/ejs.ts
 var require2 = createRequire(import.meta.url);
@@ -1949,8 +1948,7 @@ function guestEnvironment(context) {
   const path = mvuComponentPath.slice(1).split("/");
   return `
     globalThis.__timeline = ${JSON.stringify(context.timeline?.value ?? null)};
-    globalThis.__mvu = __timeline && (_.get(__timeline, ${JSON.stringify(path)})
-      ?? _.get(__timeline, ${JSON.stringify(legacyMvuComponentPath.slice(1).split("/"))}));
+    globalThis.__mvu = __timeline && _.get(__timeline, ${JSON.stringify(path)});
     const unsupported = name => { throw Error(name + ' is outside STBridge data-layer compatibility') };
     globalThis.getvar = globalThis.getVariable = function(path, options = {}) {
       if (typeof options !== 'object' || options === null) unsupported('getvar options');
@@ -2070,7 +2068,6 @@ function registerStDataRuntime(ctx) {
     id: "sillytavern.importer/mvu",
     contributionId: mvuContributionId,
     path: mvuComponentPath,
-    legacyPaths: [legacyMvuComponentPath],
     async process(input) {
       if (!/_\.(?:set|insert|assign|remove|unset|delete|add)\(|<json_?patch>/i.test(input.text)) return void 0;
       const result = await runMvu({ kind: "update", text: input.text, value: input.value }, input.signal);

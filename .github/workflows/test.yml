@@ -1,0 +1,40 @@
+name: STData compatibility tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      host_ref:
+        description: LoomStudio branch, tag or commit to test
+        default: main
+        type: string
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: The-LoomStudio/LoomStudio
+          ref: ${{ inputs.host_ref || 'main' }}
+          path: host
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: host/extensions/st-data-compat
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          package_json_file: host/package.json
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: host/.node-version
+      - run: pnpm install --frozen-lockfile
+        working-directory: host
+      - run: pnpm --filter @loom-studio/sillytavern-importer test
+        working-directory: host
+      - run: pnpm --filter @loom-studio/sillytavern-importer test:typecheck
+        working-directory: host

@@ -13,8 +13,9 @@
   },
   "scripts": {
     "build": "tsc -b && node scripts/build-runtime.mjs",
-    "test": "vitest run --passWithNoTests",
-    "lint": "eslint ."
+    "test": "pnpm build && vitest run --config vitest.config.ts",
+    "lint": "eslint .",
+    "test:typecheck": "tsc -p tests/tsconfig.json --incremental false"
   },
   "dependencies": {
     "@loom-studio/application-runtime": "workspace:*",

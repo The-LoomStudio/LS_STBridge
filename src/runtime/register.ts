@@ -1,7 +1,7 @@
 import type { ExtensionActivationContext } from '@loom-studio/extension-sdk'
 import type { StateContribution } from '@loom-studio/shared'
 import { ejsProcessor } from './ejs.js'
-import { legacyMvuComponentPath, mvuComponentPath, mvuContributionId } from './constants.js'
+import { mvuComponentPath, mvuContributionId } from './constants.js'
 import { runMvu } from './mvu.js'
 
 export const mvuContribution: StateContribution = {
@@ -38,7 +38,6 @@ export function registerStDataRuntime(ctx: ExtensionActivationContext): void {
     id: 'sillytavern.importer/mvu',
     contributionId: mvuContributionId,
     path: mvuComponentPath,
-    legacyPaths: [legacyMvuComponentPath],
     async process(input) {
       if (!/_\.(?:set|insert|assign|remove|unset|delete|add)\(|<json_?patch>/i.test(input.text)) return undefined
       const result = await runMvu({ kind: 'update', text: input.text, value: input.value }, input.signal)

@@ -18,7 +18,8 @@ export function convertSillyTavernRegexScripts(value) {
                 enabled: script.disabled !== true,
                 orderIndex: index,
                 matcher: { kind: 'regex', pattern: parsed.pattern, flags: parsed.flags },
-                effect: { kind: 'replace', replacement: (script.replaceString ?? '').replaceAll('{{match}}', '$0') },
+                effect: { kind: 'replace', replacement: (script.replaceString ?? '').replace(/\{\{match\}\}|\$0(?!\d)/gi, '$$&') },
+                ...(script.trimStrings?.length ? { captureRemove: script.trimStrings.filter(value => !value.includes('{{')) } : {}),
                 targets: ['narrative', 'agent-session'],
                 phases,
                 ...(minDepth !== undefined || maxDepth !== undefined ? { range: { minDepth, maxDepth } } : {}),
@@ -34,8 +35,8 @@ export function diagnoseSillyTavernRegexScripts(value) {
         const script = raw;
         const name = script.scriptName?.trim() || `Regex ${index + 1}`;
         return [
-            ...(Array.isArray(script.trimStrings) && script.trimStrings.length > 0
-                ? [`${name}: trimStrings 无法在声明式 replacement 中逐捕获组等价映射`]
+            ...(Array.isArray(script.trimStrings) && script.trimStrings.some(value => value.includes('{{'))
+                ? [`${name}: trimStrings 中的 ST 宏暂不支持；字面量清理已保留`]
                 : []),
             ...(script.runOnEdit === true ? [`${name}: runOnEdit 被忽略，Loom 当前没有独立编辑阶段`] : []),
         ];

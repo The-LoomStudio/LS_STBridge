@@ -95,7 +95,6 @@ export function convertSillyTavernCard(
       body: depthExtension.prompt.trim(),
       capabilities: {
         targetAnchorId: '@chat.session.post',
-        localDepth: typeof depthExtension.depth === 'number' ? depthExtension.depth : 0,
         activation: { kind: 'always' },
       },
     })
@@ -132,6 +131,9 @@ export function convertSillyTavernCard(
   if (data.character_version) metadata.stVersion = data.character_version
   if (data.tags && Array.isArray(data.tags)) metadata.stTags = data.tags
 
+  const regexValue = data.extensions?.regex_scripts ?? data.extensions?.custom_regex_rules
+    ?? data.regex_scripts ?? data.custom_regex_rules
+
   const artifact: CardBundleArtifact = {
     schemaVersion: 4,
     artifactId,
@@ -151,9 +153,7 @@ export function convertSillyTavernCard(
       } : undefined,
     },
     contextAssets,
-    textTransformRules: convertSillyTavernRegexScripts(
-      data.extensions?.regex_scripts ?? data.extensions?.custom_regex_rules,
-    ),
+    textTransformRules: convertSillyTavernRegexScripts(regexValue),
     metadata,
   }
 
@@ -161,6 +161,6 @@ export function convertSillyTavernCard(
     artifact,
     avatarBytes,
     sourceFormat,
-    diagnostics: diagnoseSillyTavernRegexScripts(data.extensions?.regex_scripts ?? data.extensions?.custom_regex_rules),
+    diagnostics: diagnoseSillyTavernRegexScripts(regexValue),
   }
 }

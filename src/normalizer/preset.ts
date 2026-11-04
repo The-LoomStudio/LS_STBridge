@@ -105,7 +105,7 @@ export function convertSillyTavernPreset(
     }
   }
 
-  // 3. 将有序条目按连续相同的 Role 聚合成 Message Block，赋予自然正序递增 localDepth，并将内置 Marker 原位转为虚拟锚点
+  // 3. 将有序条目按连续相同的 Role 聚合成 Message Block，并将内置 Marker 原位转为虚拟锚点
   const anchorState = {
     hasStableAnchor: false,
     hasLowerAnchor: false,
@@ -113,8 +113,6 @@ export function convertSillyTavernPreset(
 
   function toPromptResourceNode(
     entry: OrderedEntry,
-    targetAnchorId: string,
-    localDepth: number,
   ): PromptResourceNode | null {
     const identifier = entry.identifier
     const name = entry.prompt.name?.trim() || ''
@@ -130,9 +128,9 @@ export function convertSillyTavernPreset(
         meta: 'preset.virtual',
         category: 'preset',
         kind: 'virtual',
+        enabled: entry.enabled,
         capabilities: {
           targetAnchorId: '@lore.stable',
-          localDepth,
         },
       }
     }
@@ -146,9 +144,9 @@ export function convertSillyTavernPreset(
         meta: 'preset.virtual',
         category: 'preset',
         kind: 'virtual',
+        enabled: entry.enabled,
         capabilities: {
           targetAnchorId: '@lore.lower',
-          localDepth,
         },
       }
     }
@@ -162,9 +160,9 @@ export function convertSillyTavernPreset(
           meta: 'preset.virtual',
           category: 'preset',
           kind: 'virtual',
+          enabled: entry.enabled,
           capabilities: {
             targetAnchorId: '@chat.examples',
-            localDepth,
           },
         }
       }
@@ -181,9 +179,9 @@ export function convertSillyTavernPreset(
             meta: 'preset.virtual',
             category: 'preset',
             kind: 'virtual',
+            enabled: entry.enabled,
             capabilities: {
               targetAnchorId: '@lore.stable',
-              localDepth,
             },
           }
         }
@@ -195,7 +193,7 @@ export function convertSillyTavernPreset(
     if (!content && isMarker) return null
 
     const label = name || identifier || 'Prompt'
-    const role = entry.prompt.role ?? 'system'
+    const role = entry.prompt.role === 'developer' ? 'system' : entry.prompt.role ?? 'system'
 
     return {
       id: `st-preset-node-${identifier || randomUUID().slice(0, 8)}`,
@@ -205,8 +203,6 @@ export function convertSillyTavernPreset(
       enabled: entry.enabled,
       body: content,
       capabilities: {
-        targetAnchorId,
-        localDepth,
         roleHint: role,
         activation: { kind: 'always' },
         lifecycle: { lifecycle: 'always' },
@@ -216,16 +212,13 @@ export function convertSillyTavernPreset(
 
   function groupEntriesByRole(
     entries: OrderedEntry[],
-    targetAnchorId: string,
   ): Array<{ role: 'system' | 'user' | 'assistant'; nodes: PromptResourceNode[] }> {
     const groups: Array<{ role: 'system' | 'user' | 'assistant'; nodes: PromptResourceNode[] }> = []
     let currentGroup: { role: 'system' | 'user' | 'assistant'; nodes: PromptResourceNode[] } | null = null
 
-    let localDepthCounter = 10
     for (const entry of entries) {
-      const node = toPromptResourceNode(entry, targetAnchorId, localDepthCounter)
+      const node = toPromptResourceNode(entry)
       if (!node) continue
-      localDepthCounter += 10
 
       if (node.kind === 'virtual') {
         // 虚拟节点融入当前所在的 Message 块；若尚未有组，默认初始化 system 组
@@ -253,7 +246,8 @@ export function convertSillyTavernPreset(
   const messageBlocks: PromptResourceNode[] = []
 
   // Pre-Chat 阶段
-  const preChatGroups = groupEntriesByRole(preChatEntries, '@preset.system')
+  const preChatGroups = groupEntriesByRole(preChatEntries)
+  const postChatGroups = groupEntriesByRole(postChatEntries)
 
   // Loom Studio 特有扩展能力保底虚拟节点
   const baseSystemVirtualNodes: PromptResourceNode[] = [
@@ -338,6 +332,7 @@ export function convertSillyTavernPreset(
   // Session expands to native messages and must remain outside a Message block.
   messageBlocks.push({
     id: `preset-virtual-session-${randomUUID().slice(0, 8)}`,
+    enabled: chatHistoryIndex < 0 || orderedEntries[chatHistoryIndex]!.enabled,
     label: '@chat.session',
     meta: 'preset.virtual',
     category: 'preset',
@@ -365,8 +360,6 @@ export function convertSillyTavernPreset(
     kind: 'virtual',
     capabilities: { targetAnchorId: '@chat.session.post' },
   })
-
-  const postChatGroups = groupEntriesByRole(postChatEntries, '@chat.session.post')
 
   let attachedPostAnchors = false
   for (const group of postChatGroups) {
@@ -439,9 +432,12 @@ export function convertSillyTavernPreset(
     ],
   })
 
+  const regexValue = preset.extensions?.regex_scripts ?? preset.extensions?.custom_regex_rules
+    ?? preset.regex_scripts ?? preset.custom_regex_rules
+
   const artifact: PromptResourceArtifact = {
     format: 'loom.promptResource',
-    schemaVersion: 1,
+    schemaVersion: 2,
     resourceKind: 'preset',
     rootNode: {
       id: `preset-root-${randomUUID().slice(0, 8)}`,
@@ -451,18 +447,9 @@ export function convertSillyTavernPreset(
       enabled: true,
       children: messageBlocks,
     },
-    textTransformRules: convertSillyTavernRegexScripts(
-      preset.extensions?.regex_scripts
-      ?? preset.extensions?.custom_regex_rules
-      ?? (preset as { regex_scripts?: unknown }).regex_scripts as never
-      ?? (preset as { custom_regex_rules?: unknown }).custom_regex_rules as never,
-    ),
+    textTransformRules: convertSillyTavernRegexScripts(regexValue),
   }
 
-  const regexValue = preset.extensions?.regex_scripts
-    ?? preset.extensions?.custom_regex_rules
-    ?? (preset as { regex_scripts?: unknown }).regex_scripts as never
-    ?? (preset as { custom_regex_rules?: unknown }).custom_regex_rules as never
   markEjsResources(artifact.rootNode)
   return { artifact, diagnostics: diagnoseSillyTavernRegexScripts(regexValue) }
 }
