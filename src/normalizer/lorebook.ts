@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createId } from '@loom-studio/shared'
 import type { PromptActivation, PromptResourceArtifact, PromptResourceNode } from '@loom-studio/application-runtime'
 import type { LorebookConversionResult, SillyTavernLorebookData, SillyTavernLorebookEntry } from '../types.js'
 import { markEjsResources } from './compatibility.js'
@@ -40,7 +40,14 @@ export function convertSillyTavernLorebook(
   // Sort rawEntries by natural ascending order (smaller order on top, larger order at bottom)
   const sortedEntries = [...rawEntries].sort((a, b) => getEntryOrder(a) - getEntryOrder(b))
 
-  const rootId = `lorebook-root-${randomUUID().slice(0, 8)}`
+  const usedIds = new Set<string>()
+  const nextId = (namespace?: string) => {
+    const id = createId(namespace, candidate => usedIds.has(candidate))
+    usedIds.add(id)
+    return id
+  }
+
+  const rootId = nextId('lorebook-root')
   const lorebookTitle = lorebook.name?.trim() || defaultName?.trim() || 'SillyTavern Lorebook'
   const children: PromptResourceNode[] = []
 
@@ -83,7 +90,7 @@ export function convertSillyTavernLorebook(
     }
 
     children.push({
-      id: `lorebook-node-${entryId}-${randomUUID().slice(0, 6)}`,
+      id: nextId('lorebook-node'),
       label,
       kind: 'entry',
       category: 'lore',

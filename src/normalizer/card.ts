@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createId } from '@loom-studio/shared'
 import type { CardBundleArtifact, PromptResourceNode } from '@loom-studio/application-runtime'
 import type {
   CardConversionResult,
@@ -50,6 +50,17 @@ export function convertSillyTavernCard(
     data.scenario?.trim() ? `[Scenario]\n${data.scenario.trim()}` : '',
   ].filter(Boolean).join('\n\n')
 
+  const usedIds = new Set<string>()
+  const collectIds = (node: PromptResourceNode) => {
+    usedIds.add(node.id)
+    node.children?.forEach(collectIds)
+  }
+  const nextId = (namespace?: string) => {
+    const id = createId(namespace, candidate => usedIds.has(candidate))
+    usedIds.add(id)
+    return id
+  }
+
   const contextAssets: PromptResourceNode[] = []
   // The embedded book has one authoring source: the Lore resource tree.
   const book = data.character_book ?? (card as SillyTavernCardV2).character_book
@@ -57,6 +68,7 @@ export function convertSillyTavernCard(
     const bookName = book.name?.trim() || `${name} 世界书`
     const lorebookConversion = convertSillyTavernLorebook(book, bookName)
     if (lorebookConversion.artifact.rootNode) {
+      collectIds(lorebookConversion.artifact.rootNode)
       contextAssets.push(lorebookConversion.artifact.rootNode)
     }
   }
@@ -66,7 +78,7 @@ export function convertSillyTavernCard(
   const postHistory = data.post_history_instructions?.trim()
   if (postHistory) {
     postSessionEntries.push({
-      id: `st-post-history-${randomUUID().slice(0, 8)}`,
+      id: nextId('st-post-history'),
       label: 'Post-History Instructions',
       kind: 'entry',
       category: 'preset',
@@ -87,7 +99,7 @@ export function convertSillyTavernCard(
 
   if (depthExtension && typeof depthExtension.prompt === 'string' && depthExtension.prompt.trim()) {
     postSessionEntries.push({
-      id: `st-depth-prompt-${randomUUID().slice(0, 8)}`,
+      id: nextId('st-depth-prompt'),
       label: 'Depth Prompt Extension',
       kind: 'entry',
       category: 'preset',
@@ -102,7 +114,7 @@ export function convertSillyTavernCard(
 
   if (postSessionEntries.length > 0) {
     contextAssets.push({
-      id: `st-post-session-module-${randomUUID().slice(0, 8)}`,
+      id: nextId('st-post-session-module'),
       label: 'SillyTavern Post-Session & Depth Prompts',
       kind: 'module',
       category: 'preset',
@@ -114,7 +126,7 @@ export function convertSillyTavernCard(
     })
   }
 
-  const artifactId = `card-st-${randomUUID()}`
+  const artifactId = nextId('card-st')
   contextAssets.forEach(markEjsResources)
   const hasMvu = greetings.some(text => /<initvar>/i.test(text))
     || contextAssets.some(root => root.children?.some(entry => entry.label.toLowerCase().includes('[initvar]')))
@@ -146,9 +158,9 @@ export function convertSillyTavernCard(
       description: fullDescription || undefined,
       preset: systemPrompt ? { system: systemPrompt } : undefined,
       opening: greetings.length ? {
-        id: randomUUID(), content: greetings[0]!,
+        id: nextId('opening'), content: greetings[0]!,
         ...(greetings.length > 1 ? {
-          alternatives: greetings.slice(1).map(content => ({ id: randomUUID(), content })),
+          alternatives: greetings.slice(1).map(content => ({ id: nextId('opening'), content })),
         } : {}),
       } : undefined,
     },

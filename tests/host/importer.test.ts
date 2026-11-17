@@ -49,7 +49,7 @@ describe('SillyTavern Importer Extension', () => {
     expect(candidates.map(candidate => candidate.content)).toEqual(['Default body', 'Alternative body', 'Another body'])
     expect(new Set(candidates.map(candidate => candidate.id)).size).toBe(3)
     for (const candidate of candidates) {
-      expect(candidate.id).toMatch(/^[a-f0-9-]{36}$/)
+      expect(candidate.id).toMatch(/^[A-Za-z0-9]{11}$/)
       expect(candidate).not.toHaveProperty('entries')
       expect(candidate).not.toHaveProperty('role')
     }

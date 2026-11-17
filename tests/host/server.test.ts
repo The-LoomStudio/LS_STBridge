@@ -5,12 +5,12 @@ import { join, resolve } from 'node:path'
 import { encodeCardBundleZip } from '../../../../apps/studio-server/src/codecs/card-bundle-zip.js'
 import { defaultCardPng, encodeCardBundlePng } from '../../../../apps/studio-server/src/codecs/card-png.js'
 import { authenticatedFetch, callRpc, withStudioServer as withMainStudioServer } from '../../../../tests/integration/studio-server/helpers.js'
-import { createExtensionHost } from '@loom-studio/extension-host'
-import { createInMemoryDocumentStore } from '@loom-studio/document-store'
-import { createInMemoryDiagnosticsRegistry } from '@loom-studio/diagnostics'
+import { createExtensionHost } from '@loom-studio/kernel/extension-host'
+import { createInMemoryDocumentStore } from '@loom-studio/kernel/document-store'
+import { createInMemoryDiagnosticsRegistry } from '@loom-studio/kernel/diagnostics'
 import type { ExtensionInstallationTarget, ExtensionRpcHandler } from '@loom-studio/extension-sdk'
 import type { JsonValue } from '@loom-studio/shared'
-import * as instanceLoader from '../../../../packages/extension-sdk/extension-host/src/instance.js'
+import * as instanceLoader from '../../../../packages/kernel/src/extension-host/instance.js'
 import { activate } from '../../src/index.js'
 import { createPromptProcessorRegistry, createStateContributionRegistry, createStateContentRegistry } from '@loom-studio/application-runtime'
 
@@ -248,17 +248,29 @@ describe('studio server SillyTavern silent import pipeline', () => {
 
       try {
         await callRpc(port, 'extensions.enableModule', { packageId: 'sillytavern.importer', moduleId: 'server' })
-        const started = await callRpc<{ sessionId: string }>(port, 'sillytavern.importer.migration.start', { directory: dataDirectory })
+        const started = await callRpc<{ sessionId: string }>(port, 'extensions.invoke', {
+          packageId: 'sillytavern.importer',
+          method: 'sillytavern.importer.migration.start',
+          params: { directory: dataDirectory },
+        })
         let report: { files: number; scan: { status: string; processed: number; total: number } } | undefined
         for (let attempt = 0; attempt < 20; attempt += 1) {
-          report = await callRpc<NonNullable<typeof report>>(port, 'sillytavern.importer.migration.inspect', { sessionId: started.sessionId })
+          report = await callRpc<NonNullable<typeof report>>(port, 'extensions.invoke', {
+            packageId: 'sillytavern.importer',
+            method: 'sillytavern.importer.migration.inspect',
+            params: { sessionId: started.sessionId },
+          })
           if (report.scan.status !== 'scanning') break
           await new Promise(resolve => setTimeout(resolve, 10))
         }
         expect(report?.scan.status).toBe('completed')
         expect(report?.files).toBe(1)
         expect(report?.scan.processed).toBe(1)
-        await callRpc(port, 'sillytavern.importer.migration.cancel', { sessionId: started.sessionId })
+        await callRpc(port, 'extensions.invoke', {
+          packageId: 'sillytavern.importer',
+          method: 'sillytavern.importer.migration.cancel',
+          params: { sessionId: started.sessionId },
+        })
       } finally {
         await rm(dataDirectory, { recursive: true, force: true })
       }
