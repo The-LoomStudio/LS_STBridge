@@ -5,7 +5,7 @@ const module: ClientExtensionModule = {
     context.renderers.register({
       id: 'overall-migration-modal',
       name: '整体迁移',
-      surface: 'shell.workspace-panel',
+      surface: 'standalone.page',
       instanceScope: 'workspace',
       adapter: 'direct',
     }, {
@@ -160,7 +160,7 @@ function mountMigrationModal(
         status.textContent = `正在扫描：已扫描 ${report.scan.processed}/${report.scan.total} · ${report.scan.currentPath || '准备中'} · 已发现 ${report.files} 个文件`
         if (report.scan.status === 'failed') throw new Error(report.scan.error ?? '后端扫描失败')
         if (report.scan.status === 'completed') {
-          scanned = { total: report.files, characters: report.counts.cards, chats: report.counts.chats, presets: report.counts.presets, worlds: report.counts.worlds, unknown: 0, items: [], importable: report.files, migrationSessionId: migration.sessionId, ignored: 0 }
+          scanned = { total: report.files, characters: report.counts.cards, chats: report.counts.chats, presets: report.counts.presets, worlds: report.counts.worlds, migrationSessionId: migration.sessionId }
           status.textContent = `扫描完成：发现 ${report.files} 个兼容文件`
           progressBar.hidden = true
           results.innerHTML = renderScanResult(scanned)
@@ -212,18 +212,13 @@ function mountMigrationModal(
   return { dispose }
 }
 
-type ScanItem = { kind: 'card' | 'chat' | 'preset' | 'world'; file: File; path: string }
 type ScanResult = {
   total: number
   characters: number
   chats: number
   presets: number
   worlds: number
-  unknown: number
-  items: ScanItem[]
-  importable: number
   migrationSessionId: string
-  ignored: number
 }
 
 export function normalizeScanPath(path: string, hasDefaultUserRoot: boolean) {
@@ -236,7 +231,7 @@ export function normalizeScanPath(path: string, hasDefaultUserRoot: boolean) {
   return hasDefaultUserRoot ? '' : normalized.replace(/^\.?\//, '')
 }
 
-export function compatibleFileKind(path: string): ScanItem['kind'] | undefined {
+export function compatibleFileKind(path: string): 'card' | 'chat' | 'preset' | 'world' | undefined {
   const lower = path.toLowerCase()
   if (/(^|\/)characters\/.+\.(png|json)$/.test(lower)) return 'card'
   if (/(^|\/)chats\/.+\/[^/]+\.jsonl$/.test(lower)) return 'chat'
@@ -263,11 +258,6 @@ function renderScanResult(result: {
   chats: number
   presets: number
   worlds: number
-  unknown: number
-  ignored?: number
-  duplicates?: number
-  conflicts?: number
-  preparationFailures?: string[]
 }) {
   return `
     <div><strong>可迁移内容</strong></div>
@@ -276,11 +266,6 @@ function renderScanResult(result: {
       <dt>会话</dt><dd>${result.chats}</dd>
       <dt>Preset</dt><dd>${result.presets}</dd>
       <dt>世界书</dt><dd>${result.worlds}</dd>
-      <dt>重复项</dt><dd>${result.duplicates ?? 0}</dd>
-      <dt>同名冲突</dt><dd>${result.conflicts ?? 0}</dd>
-      <dt>转换失败</dt><dd>${result.preparationFailures?.length ?? 0}</dd>
-      <dt>未识别文件</dt><dd>${result.unknown}</dd>
-      <dt>已忽略不兼容文件</dt><dd>${result.ignored ?? 0}</dd>
     </dl>
   `
 }

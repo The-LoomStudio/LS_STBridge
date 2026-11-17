@@ -35756,7 +35756,16 @@ var replaceLoreMountsResultSchema = external_exports.object({
   mounts: external_exports.array(loreMountSchema),
   mutation: external_exports.object({ changesetId: external_exports.string() })
 });
+var resourceReleaseSchema = external_exports.object({
+  id: external_exports.string().min(1),
+  version: external_exports.string().regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/),
+  update: external_exports.object({ manifestUrl: external_exports.url().refine((value) => {
+    const url2 = new URL(value);
+    return url2.protocol === "https:" && !url2.username && !url2.password && !url2.hash;
+  }) }).optional()
+}).strict();
 var promptResourceDisplayMetadataSchema = external_exports.object({
+  release: resourceReleaseSchema.optional(),
   icon: external_exports.object({
     kind: external_exports.literal("package"),
     packageId: external_exports.string().regex(/^[A-Za-z0-9._-]+$/),

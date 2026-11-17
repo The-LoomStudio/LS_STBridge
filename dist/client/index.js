@@ -4,7 +4,7 @@ var module = {
     context.renderers.register({
       id: "overall-migration-modal",
       name: "\u6574\u4F53\u8FC1\u79FB",
-      surface: "shell.workspace-panel",
+      surface: "standalone.page",
       instanceScope: "workspace",
       adapter: "direct"
     }, {
@@ -152,7 +152,7 @@ function mountMigrationModal(root, context, rendererContext) {
         status.textContent = `\u6B63\u5728\u626B\u63CF\uFF1A\u5DF2\u626B\u63CF ${report.scan.processed}/${report.scan.total} \xB7 ${report.scan.currentPath || "\u51C6\u5907\u4E2D"} \xB7 \u5DF2\u53D1\u73B0 ${report.files} \u4E2A\u6587\u4EF6`;
         if (report.scan.status === "failed") throw new Error(report.scan.error ?? "\u540E\u7AEF\u626B\u63CF\u5931\u8D25");
         if (report.scan.status === "completed") {
-          scanned = { total: report.files, characters: report.counts.cards, chats: report.counts.chats, presets: report.counts.presets, worlds: report.counts.worlds, unknown: 0, items: [], importable: report.files, migrationSessionId: migration.sessionId, ignored: 0 };
+          scanned = { total: report.files, characters: report.counts.cards, chats: report.counts.chats, presets: report.counts.presets, worlds: report.counts.worlds, migrationSessionId: migration.sessionId };
           status.textContent = `\u626B\u63CF\u5B8C\u6210\uFF1A\u53D1\u73B0 ${report.files} \u4E2A\u517C\u5BB9\u6587\u4EF6`;
           progressBar.hidden = true;
           results.innerHTML = renderScanResult(scanned);
@@ -237,11 +237,6 @@ function renderScanResult(result) {
       <dt>\u4F1A\u8BDD</dt><dd>${result.chats}</dd>
       <dt>Preset</dt><dd>${result.presets}</dd>
       <dt>\u4E16\u754C\u4E66</dt><dd>${result.worlds}</dd>
-      <dt>\u91CD\u590D\u9879</dt><dd>${result.duplicates ?? 0}</dd>
-      <dt>\u540C\u540D\u51B2\u7A81</dt><dd>${result.conflicts ?? 0}</dd>
-      <dt>\u8F6C\u6362\u5931\u8D25</dt><dd>${result.preparationFailures?.length ?? 0}</dd>
-      <dt>\u672A\u8BC6\u522B\u6587\u4EF6</dt><dd>${result.unknown}</dd>
-      <dt>\u5DF2\u5FFD\u7565\u4E0D\u517C\u5BB9\u6587\u4EF6</dt><dd>${result.ignored ?? 0}</dd>
     </dl>
   `;
 }

@@ -10,6 +10,10 @@
     "studio": "^0.1.0"
   },
   "tags": ["sillytavern", "importer", "cards", "lorebook", "presets"],
+  "distribution": {
+    "kind": "git",
+    "url": "https://github.com/The-LoomStudio/LS_STBridge.git"
+  },
   "modules": [
     {
       "id": "server",
@@ -57,7 +61,7 @@
           {
             "id": "overall-migration-modal",
             "name": "整体迁移",
-            "surface": "shell.workspace-panel",
+            "surface": "standalone.page",
             "instanceScope": "workspace",
             "adapter": "direct"
           }

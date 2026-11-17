@@ -1,5 +1,5 @@
 import { defineServerExtension } from '@loom-studio/extension-sdk'
-import { isRecord, type JsonValue } from '@loom-studio/shared'
+import { createId, isRecord, type JsonValue } from '@loom-studio/shared'
 import { extractPngImageBytes, extractStCardFromPng, isPngFile } from './parser/png-reader.js'
 import { sniffData } from './parser/sniffer.js'
 import { convertSillyTavernCard } from './normalizer/card.js'
@@ -33,7 +33,7 @@ const migrationBatchBytes = 128 * 1024
 const migrationMaxChunksPerFile = Math.ceil(migrationMaxBytes / migrationBatchBytes)
 
 function sourceFileName(): string {
-  return `${crypto.randomUUID()}.bin`
+  return `${createId('source')}.bin`
 }
 
 function compatibleMigrationKind(path: string): 'card' | 'chat' | 'preset' | 'world' | undefined {
@@ -132,7 +132,7 @@ export const activate = defineServerExtension({
           await expireMigrationSession(sessionId, session)
         }
       }
-      const id = `st-migration-${crypto.randomUUID()}`
+      const id = createId('st-migration', candidate => migrationSessions.has(candidate))
       const stagingDirectory = await mkdtemp(join(tmpdir(), 'loom-st-migration-'))
       migrationSessions.set(id, {
         createdAt: now,
@@ -165,17 +165,21 @@ export const activate = defineServerExtension({
         throw new Error('Migration session expired')
       }
       if (session.preparation) throw new Error('Migration input is already prepared; start a new scan to change files')
-      const newPaths = new Set(params.files.flatMap(value => (
-        isRecord(value) && typeof value.path === 'string' && !session.files.has(value.path) ? [value.path] : []
-      )))
+      const newPaths = new Set<string>()
+      for (const value of params.files) {
+        if (!isRecord(value) || typeof value.path !== 'string') continue
+        const normalized = normalizeMigrationPath(value.path)
+        if (!session.files.has(normalized)) newPaths.add(normalized)
+      }
       if (session.files.size + newPaths.size > migrationMaxFiles) {
         throw new Error(`Migration exceeds ${migrationMaxFiles} files`)
       }
       const batchBytes = params.files.reduce<number>((total, value) => (
         total + (isRecord(value) && typeof value.chunk === 'string'
           ? Buffer.byteLength(Buffer.from(value.chunk, 'base64'))
-          : isRecord(value) && typeof value.source === 'string' ? Buffer.byteLength(value.source, 'utf8')
-            : isRecord(value) && Array.isArray(value.source) ? value.source.length : 0)
+          : isRecord(value) && Array.isArray(value.chunk) ? value.chunk.length
+            : isRecord(value) && typeof value.source === 'string' ? Buffer.byteLength(value.source, 'utf8')
+              : isRecord(value) && Array.isArray(value.source) ? value.source.length : 0)
       ), 0)
       if (session.totalBytes + batchBytes > migrationMaxBytes) {
         throw new Error(`Migration exceeds ${migrationMaxBytes} bytes`)
@@ -311,7 +315,7 @@ export const activate = defineServerExtension({
         }
         if (item.kind === 'preset') return {
           kind: 'prompt-resource', key: path,
-          artifact: convertSillyTavernPreset(JSON.parse(bytes.toString('utf8')) as SillyTavernPresetData).artifact,
+          artifact: convertSillyTavernPreset(bytes).artifact,
         } as unknown as JsonValue
         const key = characterKeyFromPath(path)
         const cardPaths = [...session.sources].filter(([, source]) => source.kind === 'card').map(([candidate]) => candidate)

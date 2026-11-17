@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createId } from '@loom-studio/shared';
 import { markEjsResources } from './compatibility.js';
 export function extractLorebookKeys(entry) {
     const raw = entry.key ?? entry.keys ?? [];
@@ -32,7 +32,13 @@ export function convertSillyTavernLorebook(source, defaultName) {
     };
     // Sort rawEntries by natural ascending order (smaller order on top, larger order at bottom)
     const sortedEntries = [...rawEntries].sort((a, b) => getEntryOrder(a) - getEntryOrder(b));
-    const rootId = `lorebook-root-${randomUUID().slice(0, 8)}`;
+    const usedIds = new Set();
+    const nextId = (namespace) => {
+        const id = createId(namespace, candidate => usedIds.has(candidate));
+        usedIds.add(id);
+        return id;
+    };
+    const rootId = nextId('lorebook-root');
     const lorebookTitle = lorebook.name?.trim() || defaultName?.trim() || 'SillyTavern Lorebook';
     const children = [];
     for (const [index, entry] of sortedEntries.entries()) {
@@ -73,7 +79,7 @@ export function convertSillyTavernLorebook(source, defaultName) {
             targetAnchorId = '@lore.lower';
         }
         children.push({
-            id: `lorebook-node-${entryId}-${randomUUID().slice(0, 6)}`,
+            id: nextId('lorebook-node'),
             label,
             kind: 'entry',
             category: 'lore',

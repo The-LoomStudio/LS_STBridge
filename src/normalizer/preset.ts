@@ -1,8 +1,22 @@
-import { randomUUID } from 'node:crypto'
+import JSON5 from 'json5'
+import { jsonrepair } from 'jsonrepair'
+import { createId } from '@loom-studio/shared'
 import { markEjsResources } from './compatibility.js'
 import type { PromptResourceArtifact, PromptResourceNode } from '@loom-studio/application-runtime'
 import type { PresetConversionResult, SillyTavernPresetData, SillyTavernPresetPrompt } from '../types.js'
 import { convertSillyTavernRegexScripts, diagnoseSillyTavernRegexScripts } from './regex.js'
+
+function parsePresetJson(text: string): SillyTavernPresetData {
+  try {
+    return JSON.parse(text) as SillyTavernPresetData
+  } catch {
+    try {
+      return JSON5.parse(text) as SillyTavernPresetData
+    } catch {
+      return JSON.parse(jsonrepair(text)) as SillyTavernPresetData
+    }
+  }
+}
 
 export function convertSillyTavernPreset(
   source: Uint8Array | string | SillyTavernPresetData,
@@ -12,9 +26,9 @@ export function convertSillyTavernPreset(
 
   if (source instanceof Uint8Array || Buffer.isBuffer(source)) {
     const text = Buffer.from(source).toString('utf8')
-    preset = JSON.parse(text) as SillyTavernPresetData
+    preset = parsePresetJson(text)
   } else if (typeof source === 'string') {
-    preset = JSON.parse(source) as SillyTavernPresetData
+    preset = parsePresetJson(source)
   } else {
     preset = source
   }
@@ -46,6 +60,13 @@ export function convertSillyTavernPreset(
     }
   }
 
+  const usedIds = new Set<string>()
+  const nextId = (namespace?: string) => {
+    const id = createId(namespace, candidate => usedIds.has(candidate))
+    usedIds.add(id)
+    return id
+  }
+
   type OrderedEntry = {
     prompt: SillyTavernPresetPrompt
     identifier: string
@@ -65,7 +86,7 @@ export function convertSillyTavernPreset(
   } else {
     for (const p of rawPrompts) {
       if (!p) continue
-      const id = p.identifier || randomUUID().slice(0, 8)
+      const id = p.identifier || nextId('st-prompt')
       orderedEntries.push({
         prompt: p,
         identifier: id,
@@ -123,7 +144,7 @@ export function convertSillyTavernPreset(
     if (identifier === 'worldInfoBefore' || name === 'World Info (before)') {
       anchorState.hasStableAnchor = true
       return {
-        id: `preset-virtual-setting-stable-${randomUUID().slice(0, 8)}`,
+        id: nextId('preset-virtual-setting-stable'),
         label: '@lore.stable',
         meta: 'preset.virtual',
         category: 'preset',
@@ -139,7 +160,7 @@ export function convertSillyTavernPreset(
     if (identifier === 'worldInfoAfter' || name === 'World Info (after)') {
       anchorState.hasLowerAnchor = true
       return {
-        id: `preset-virtual-setting-lower-${randomUUID().slice(0, 8)}`,
+        id: nextId('preset-virtual-setting-lower'),
         label: '@lore.lower',
         meta: 'preset.virtual',
         category: 'preset',
@@ -155,7 +176,7 @@ export function convertSillyTavernPreset(
     if (identifier === 'dialogueExamples' || name === 'Chat Examples') {
       if (!content) {
         return {
-          id: `preset-virtual-examples-${randomUUID().slice(0, 8)}`,
+          id: nextId('preset-virtual-examples'),
           label: '@chat.examples',
           meta: 'preset.virtual',
           category: 'preset',
@@ -174,7 +195,7 @@ export function convertSillyTavernPreset(
         if (!anchorState.hasStableAnchor) {
           anchorState.hasStableAnchor = true
           return {
-            id: `preset-virtual-setting-stable-${randomUUID().slice(0, 8)}`,
+            id: nextId('preset-virtual-setting-stable'),
             label: '@lore.stable',
             meta: 'preset.virtual',
             category: 'preset',
@@ -196,7 +217,7 @@ export function convertSillyTavernPreset(
     const role = entry.prompt.role === 'developer' ? 'system' : entry.prompt.role ?? 'system'
 
     return {
-      id: `st-preset-node-${identifier || randomUUID().slice(0, 8)}`,
+      id: nextId('st-preset-node'),
       label,
       kind: 'entry',
       category: 'preset',
@@ -252,7 +273,7 @@ export function convertSillyTavernPreset(
   // Loom Studio 特有扩展能力保底虚拟节点
   const baseSystemVirtualNodes: PromptResourceNode[] = [
     {
-      id: `preset-virtual-preset-system-${randomUUID().slice(0, 8)}`,
+      id: nextId('preset-virtual-preset-system'),
       label: '@preset.system',
       meta: 'preset.virtual',
       category: 'preset',
@@ -260,7 +281,7 @@ export function convertSillyTavernPreset(
       capabilities: { targetAnchorId: '@preset.system' },
     },
     {
-      id: `preset-virtual-tools-${randomUUID().slice(0, 8)}`,
+      id: nextId('preset-virtual-tools'),
       label: '@chat.tools',
       meta: 'preset.virtual',
       category: 'preset',
@@ -268,7 +289,7 @@ export function convertSillyTavernPreset(
       capabilities: { targetAnchorId: '@chat.tools' },
     },
     {
-      id: `preset-virtual-fresh-tail-${randomUUID().slice(0, 8)}`,
+      id: nextId('preset-virtual-fresh-tail'),
       label: '@fresh.tail',
       meta: 'preset.virtual',
       category: 'preset',
@@ -280,7 +301,7 @@ export function convertSillyTavernPreset(
   // 若在条目中未曾原位匹配到 @lore.stable，则作为保底追加
   if (!anchorState.hasStableAnchor) {
     baseSystemVirtualNodes.splice(1, 0, {
-      id: `preset-virtual-setting-stable-${randomUUID().slice(0, 8)}`,
+      id: nextId('preset-virtual-setting-stable'),
       label: '@lore.stable',
       meta: 'preset.virtual',
       category: 'preset',
@@ -294,7 +315,7 @@ export function convertSillyTavernPreset(
   for (const group of preChatGroups) {
     if (group.role === 'system' && !attachedSystemAnchors) {
       messageBlocks.push({
-        id: `preset-msg-system-${randomUUID().slice(0, 8)}`,
+        id: nextId('preset-msg-system'),
         label: 'System Message',
         meta: 'message.system',
         category: 'preset',
@@ -306,7 +327,7 @@ export function convertSillyTavernPreset(
     } else {
       const label = group.role === 'user' ? 'User Message' : (group.role === 'assistant' ? 'Assistant Message' : 'System Message')
       messageBlocks.push({
-        id: `preset-msg-${group.role}-${randomUUID().slice(0, 8)}`,
+        id: nextId(`preset-msg-${group.role}`),
         label,
         meta: `message.${group.role}`,
         category: 'preset',
@@ -319,7 +340,7 @@ export function convertSillyTavernPreset(
 
   if (!attachedSystemAnchors) {
     messageBlocks.unshift({
-      id: `preset-msg-system-${randomUUID().slice(0, 8)}`,
+      id: nextId('preset-msg-system'),
       label: 'System Message',
       meta: 'message.system',
       category: 'preset',
@@ -331,7 +352,7 @@ export function convertSillyTavernPreset(
 
   // Session expands to native messages and must remain outside a Message block.
   messageBlocks.push({
-    id: `preset-virtual-session-${randomUUID().slice(0, 8)}`,
+    id: nextId('preset-virtual-session'),
     enabled: chatHistoryIndex < 0 || orderedEntries[chatHistoryIndex]!.enabled,
     label: '@chat.session',
     meta: 'preset.virtual',
@@ -344,7 +365,7 @@ export function convertSillyTavernPreset(
   const basePostVirtualNodes: PromptResourceNode[] = []
   if (!anchorState.hasLowerAnchor) {
     basePostVirtualNodes.push({
-      id: `preset-virtual-setting-lower-${randomUUID().slice(0, 8)}`,
+      id: nextId('preset-virtual-setting-lower'),
       label: '@lore.lower',
       meta: 'preset.virtual',
       category: 'preset',
@@ -353,7 +374,7 @@ export function convertSillyTavernPreset(
     })
   }
   basePostVirtualNodes.push({
-    id: `preset-virtual-post-session-${randomUUID().slice(0, 8)}`,
+    id: nextId('preset-virtual-post-session'),
     label: '@chat.session.post',
     meta: 'preset.virtual',
     category: 'preset',
@@ -365,7 +386,7 @@ export function convertSillyTavernPreset(
   for (const group of postChatGroups) {
     if (group.role === 'system' && !attachedPostAnchors) {
       messageBlocks.push({
-        id: `preset-msg-post-session-${randomUUID().slice(0, 8)}`,
+        id: nextId('preset-msg-post-session'),
         label: 'Post Session Message',
         meta: 'message.system',
         category: 'preset',
@@ -377,7 +398,7 @@ export function convertSillyTavernPreset(
     } else {
       if (!attachedPostAnchors) {
         messageBlocks.push({
-          id: `preset-msg-post-session-${randomUUID().slice(0, 8)}`,
+          id: nextId('preset-msg-post-session'),
           label: 'Post Session Message',
           meta: 'message.system',
           category: 'preset',
@@ -389,7 +410,7 @@ export function convertSillyTavernPreset(
       }
       const label = group.role === 'user' ? 'Post-Session User Message' : (group.role === 'assistant' ? 'Post-Session Assistant Message' : 'Post-Session System Message')
       messageBlocks.push({
-        id: `preset-msg-post-${group.role}-${randomUUID().slice(0, 8)}`,
+        id: nextId(`preset-msg-post-${group.role}`),
         label,
         meta: `message.${group.role}`,
         category: 'preset',
@@ -402,7 +423,7 @@ export function convertSillyTavernPreset(
 
   if (!attachedPostAnchors) {
     messageBlocks.push({
-      id: `preset-msg-post-session-${randomUUID().slice(0, 8)}`,
+      id: nextId('preset-msg-post-session'),
       label: 'Post Session Message',
       meta: 'message.system',
       category: 'preset',
@@ -414,7 +435,7 @@ export function convertSillyTavernPreset(
 
   // User Input Message
   messageBlocks.push({
-    id: `preset-msg-user-${randomUUID().slice(0, 8)}`,
+    id: nextId('preset-msg-user'),
     label: 'User Input Message',
     meta: 'message.user',
     category: 'preset',
@@ -422,7 +443,7 @@ export function convertSillyTavernPreset(
     capabilities: { roleHint: 'user' },
     children: [
       {
-        id: `preset-virtual-input-${randomUUID().slice(0, 8)}`,
+        id: nextId('preset-virtual-input'),
         label: '@chat.input',
         meta: 'preset.virtual',
         category: 'preset',
@@ -440,7 +461,7 @@ export function convertSillyTavernPreset(
     schemaVersion: 2,
     resourceKind: 'preset',
     rootNode: {
-      id: `preset-root-${randomUUID().slice(0, 8)}`,
+      id: nextId('preset-root'),
       label: name,
       kind: 'module',
       category: 'preset',
